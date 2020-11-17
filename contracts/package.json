@@ -1,0 +1,22 @@
+{
+  "name": "statebridge-contracts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "GPLv3",
+  "dependencies": {
+    "@ethereumjs/block": "^3.0.0-beta.2",
+    "@ethereumjs/common": "^2.0.0-beta.2",
+    "@ethereumjs/tx": "^3.0.0-beta.2",
+    "eth-lib": "^0.1.29",
+    "merkle-patricia-tree": "^4.0.0",
+    "rlp": "^2.2.6"
+  }
+}
