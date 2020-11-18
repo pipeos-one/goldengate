@@ -27,7 +27,7 @@ library RLPDecode {
     * @return The next element in the iteration.
     */
     function next(Iterator memory self) internal pure returns (RLPItem memory) {
-        require(hasNext(self));
+        require(hasNext(self), "RLPDecoder iterator has no next");
 
         uint ptr = self.nextPtr;
         uint itemLength = _itemLength(ptr);
@@ -64,7 +64,7 @@ library RLPDecode {
     * @return An 'Iterator' over the item.
     */
     function iterator(RLPItem memory self) internal pure returns (Iterator memory) {
-        require(isList(self));
+        require(isList(self), "RLPDecoder iterator is not list");
 
         uint ptr = self.memPtr + _payloadOffset(self.memPtr);
         return Iterator(self, ptr);
@@ -88,7 +88,7 @@ library RLPDecode {
     * @param item RLP encoded list in bytes
     */
     function toList(RLPItem memory item) internal pure returns (RLPItem[] memory) {
-        require(isList(item));
+        require(isList(item), "RLPDecoder iterator is not a list");
 
         uint items = numItems(item);
         RLPItem[] memory result = new RLPItem[](items);
@@ -137,7 +137,7 @@ library RLPDecode {
 
     // any non-zero byte except "0x80" is considered true
     function toBoolean(RLPItem memory item) internal pure returns (bool) {
-        require(item.len == 1);
+        require(item.len == 1, "RLPDecoder toBoolean invalid length");
         uint result;
         uint memPtr = item.memPtr;
         assembly {
@@ -157,13 +157,13 @@ library RLPDecode {
 
     function toAddress(RLPItem memory item) internal pure returns (address) {
         // 1 byte for the length prefix
-        require(item.len == 21);
+        require(item.len == 21, "RLPDecoder toAddress invalid length");
 
         return address(toUint(item));
     }
 
     function toUint(RLPItem memory item) internal pure returns (uint) {
-        require(item.len > 0 && item.len <= 33);
+        require(item.len > 0 && item.len <= 33, "RLPDecoder toUint invalid length");
 
         uint offset = _payloadOffset(item.memPtr);
         uint len = item.len - offset;
@@ -185,7 +185,7 @@ library RLPDecode {
     // enforces 32 byte length
     function toUintStrict(RLPItem memory item) internal pure returns (uint) {
         // one byte prefix
-        require(item.len == 33);
+        require(item.len == 33, "RLPDecoder toUintStrict invalid length");
 
         uint result;
         uint memPtr = item.memPtr + 1;
@@ -197,7 +197,7 @@ library RLPDecode {
     }
 
     function toBytes(RLPItem memory item) internal pure returns (bytes memory) {
-        require(item.len > 0);
+        require(item.len > 0, "RLPDecoder toBytes invalid length");
 
         uint offset = _payloadOffset(item.memPtr);
         uint len = item.len - offset; // data length
