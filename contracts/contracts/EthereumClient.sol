@@ -4,9 +4,9 @@ pragma experimental ABIEncoderV2;
 import "./EthereumDecoder.sol";
 
 contract EthereumClient {
-    uint256 lastBlockHeight = 0;
+    uint256 public lastBlockHeight = 0;
 
-    mapping(uint256 => bytes32) blockHashes;
+    mapping(uint256 => bytes32) public blockHashes;
 
     event BlockAdded(uint256 indexed height, bytes32 indexed hash);
 
