@@ -5,6 +5,10 @@ import "./RLPEncode.sol";
 import "./RLPDecode.sol";
 import "./EthereumDecoder.sol";
 
+interface EthereumClient {
+    function getBlockHash(uint256 height) view external returns (bytes32 hash);
+}
+
 contract Prover {
     using RLPDecode for RLPDecode.RLPItem;
     using RLPDecode for RLPDecode.Iterator;
@@ -16,6 +20,12 @@ contract Prover {
         uint256 keyIndex;
         uint256 proofIndex;
         bytes expectedValue;
+    }
+
+    EthereumClient public client;
+
+    constructor(address bridgeClient) {
+        client = EthereumClient(bridgeClient);
     }
 
     function getSignedTransaction(
@@ -81,12 +91,72 @@ contract Prover {
         encoded = RLPEncode.encodeList(list);
     }
 
+    function verifyStorage(
+        EthereumDecoder.BlockHeader memory header,
+        MerkleProof memory accountProof,
+        MerkleProof memory storageProof
+    ) view public returns (bytes memory)
+    {
+        EthereumDecoder.Account memory account = EthereumDecoder.toAccount(accountProof.expectedValue);
+
+        // Check block hash is hash(rlp(blockData))
+        bytes32 blockHash = getBlockHash(header);
+        // require(blockHash == header.hash, "Header data or hash invalid");
+
+        // Check block hash was registered in light client
+        bytes32 blockHashClient = client.getBlockHash(header.number);
+        require(blockHashClient > 0, "Unregistered block hash");
+
+        // Check storage root is part of the account
+        require(storageProof.expectedRoot == account.storageRoot, "Account storageRoot or storage proof invalid. ");
+
+        // check account root
+        // TODO meld two verification - they share indexes and header data
+
+        // Check proofs are valid
+        bytes memory a = verifyTrieProof(accountProof);
+        bytes memory b = verifyTrieProof(storageProof);
+        return abi.encodePacked(a, b);
+    }
+
+    function verifyBalance(
+        EthereumDecoder.BlockHeader memory header,
+        MerkleProof memory txdata,
+        MerkleProof memory receiptdata,
+        uint256 value
+    ) view public returns (bytes memory)
+    {
+        EthereumDecoder.Transaction memory transaction = EthereumDecoder.toTransaction(txdata.expectedValue);
+        EthereumDecoder.TransactionReceiptTrie memory receipt = EthereumDecoder.toReceipt(receiptdata.expectedValue);
+
+        // Check block hash is hash(rlp(blockData))
+        bytes32 blockHash = getBlockHash(header);
+        require(blockHash == header.hash, "Header data or hash invalid");
+
+        // Check block hash was registered in light client
+        bytes32 blockHashClient = client.getBlockHash(header.number);
+        require(blockHashClient > 0, "Unregistered block hash");
+
+        // decode receipt status and check it is true
+        require(receipt.status == 1, "Transaction receipt status failed");
+
+        // TODO: check sender sent transaction
+        require(transaction.value == value, "Wrong transaction value");
+
+        // TODO meld two verification - they share indexes and header data
+
+        // TODO check storage proofs -> storageHash
+
+        // Check proofs are valid
+        bytes memory a = verifyTrieProof(txdata);
+        bytes memory b = verifyTrieProof(receiptdata);
+        return abi.encodePacked(a, b);
+    }
+
     function verifyTrieProof(
         MerkleProof memory data
     ) pure public returns (bool correct)
     {
-        // data.key = hex'0001';
-
         bytes memory node = data.proof[data.proofIndex];
         RLPDecode.Iterator memory dec = RLPDecode.toRlpItem(node).iterator();
 
@@ -152,13 +222,10 @@ contract Prover {
     {
         bytes memory nodekey = dec.next().toBytes();
         bytes memory nodevalue = dec.next().toBytes();
-        // get prefix and optional nibble from the first byte
         uint256 prefix;
-        uint256 nibble;
         assembly {
             let first := shr(248, mload(add(nodekey, 32)))
             prefix := shr(4, first)
-            nibble := and(first, 0x0f)
         }
 
         if (prefix == 2) {
@@ -185,14 +252,22 @@ contract Prover {
     {
         // even leaf node
         uint256 length = nodekey.length - 1;
-        bytes memory actualKey = slice(nodekey, 33, length);
-        bytes memory restKey = slice(data.key, 32 + data.keyIndex, length);
+        // bytes memory actualKey = slice(nodekey, 33, length);
+        // bytes memory restKey = slice(data.key, 32 + data.keyIndex, length);
 
-        if (
-            keccak256(actualKey) == keccak256(restKey)
-            && keccak256(data.expectedValue) == keccak256(nodevalue)
-        ) {
-            return true;
+        bytes memory actualKey = new bytes(length);
+        bytes memory restKey = new bytes(length * 2);
+        bytes memory key = data.key;
+        uint256 keyIndex = data.keyIndex;
+        assembly {
+            mstore(add(actualKey, 32), shr(4, shl(4, mload(add(nodekey, 33)))))
+            mstore(add(restKey, 32), mload(add(key, add(32, keyIndex))))
+            mstore(add(restKey, 64), mload(add(key, add(64, keyIndex))))
+        }
+
+        if (keccak256(data.expectedValue) == keccak256(nodevalue)) {
+            if (keccak256(actualKey) == keccak256(restKey)) return hex'1144';
+            if (keccak256(expandKeyEven(actualKey)) == keccak256(restKey)) return hex'1144';
         }
         if (data.expectedValue.length == 0) return true;
         else return false;
@@ -206,19 +281,18 @@ contract Prover {
     {
         // odd leaf node
         bytes memory actualKey = new bytes(nodekey.length);
-        bytes memory restKey = new bytes(data.key.length - data.keyIndex);
+        bytes memory restKey = new bytes((data.key.length - data.keyIndex) * 2);
         bytes memory key = data.key;
         uint256 keyIndex = data.keyIndex;
         assembly {
-            mstore(add(actualKey, 32), shr(8, shl(8, mload(add(nodekey, 32)))))
+            mstore(add(actualKey, 32), shr(4, shl(4, mload(add(nodekey, 32)))))
             mstore(add(restKey, 32), mload(add(key, add(32, keyIndex))))
+            mstore(add(restKey, 64), mload(add(key, add(64, keyIndex))))
         }
 
-        if (
-            keccak256(actualKey) == keccak256(restKey)
-            && keccak256(data.expectedValue) == keccak256(nodevalue)
-        ) {
-            return true;
+        if (keccak256(data.expectedValue) == keccak256(nodevalue)) {
+            if (keccak256(actualKey) == keccak256(restKey)) return hex'1155';
+            if (keccak256(expandKeyOdd(actualKey)) == keccak256(restKey)) return hex'1155';
         }
         if (data.expectedValue.length == 0) return true;
         else return false;
@@ -261,7 +335,7 @@ contract Prover {
         uint256 keyIndex = data.keyIndex;
 
         assembly {
-            mstore(add(shared_nibbles, 32), shr(8, shl(8, mload(add(nodekey, 32)))))
+            mstore(add(shared_nibbles, 32), shr(4, shl(4, mload(add(nodekey, 32)))))
             mstore(add(restKey, 32), mload(add(key, add(32, keyIndex))))
         }
 
@@ -283,13 +357,48 @@ contract Prover {
 
     function slice(bytes memory data, uint256 start, uint256 length) pure internal returns(bytes memory) {
         bytes memory newdata = new bytes(length);
+        // TODO this is used for keys, which are max 64 bytes long when expanded
+        // fixme precision
         assembly {
             mstore(add(newdata, 32), mload(add(data, add(32, start))))
+            mstore(add(newdata, 64), mload(add(data, add(64, start))))
         }
         return newdata;
     }
 
     function getHash(bytes memory data) public pure returns (bytes32 hash) {
         return keccak256(data);
+    }
+
+    function getNibbles(bytes1 b) internal pure returns (bytes1 nibble1, bytes1 nibble2) {
+        assembly {
+                nibble1 := shr(4, b)
+                nibble2 := shr(4, shl(4, b))
+            }
+    }
+
+    function expandKeyEven(bytes memory data) internal pure returns (bytes memory) {
+        uint256 length = data.length * 2;
+        bytes memory expanded = new bytes(length);
+
+        for (uint256 i = 0 ; i < data.length; i++) {
+            (bytes1 nibble1, bytes1 nibble2) = getNibbles(data[i]);
+            expanded[i * 2] = nibble1;
+            expanded[i * 2 + 1] = nibble2;
+        }
+        return expanded;
+    }
+
+    function expandKeyOdd(bytes memory data) internal pure returns(bytes memory) {
+        uint256 length = data.length * 2 - 1;
+        bytes memory expanded = new bytes(length);
+        expanded[0] = data[0];
+
+        for (uint256 i = 1 ; i < data.length; i++) {
+            (bytes1 nibble1, bytes1 nibble2) = getNibbles(data[i]);
+            expanded[i * 2 - 1] = nibble1;
+            expanded[i * 2] = nibble2;
+        }
+        return expanded;
     }
 }
