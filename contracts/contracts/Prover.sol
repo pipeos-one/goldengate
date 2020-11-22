@@ -95,7 +95,7 @@ contract Prover {
         EthereumDecoder.BlockHeader memory header,
         MerkleProof memory accountProof,
         MerkleProof memory storageProof
-    ) view public returns (bytes memory)
+    ) view public returns (bool)
     {
         EthereumDecoder.Account memory account = EthereumDecoder.toAccount(accountProof.expectedValue);
 
@@ -114,9 +114,10 @@ contract Prover {
         // TODO meld two verification - they share indexes and header data
 
         // Check proofs are valid
-        bytes memory a = verifyTrieProof(accountProof);
-        bytes memory b = verifyTrieProof(storageProof);
-        return abi.encodePacked(a, b);
+        require(verifyTrieProof(accountProof));
+        require(verifyTrieProof(storageProof));
+
+        return true;
     }
 
     function verifyBalance(
@@ -124,7 +125,7 @@ contract Prover {
         MerkleProof memory txdata,
         MerkleProof memory receiptdata,
         uint256 value
-    ) view public returns (bytes memory)
+    ) view public returns (bool)
     {
         EthereumDecoder.Transaction memory transaction = EthereumDecoder.toTransaction(txdata.expectedValue);
         EthereumDecoder.TransactionReceiptTrie memory receipt = EthereumDecoder.toReceipt(receiptdata.expectedValue);
@@ -144,18 +145,17 @@ contract Prover {
         require(transaction.value == value, "Wrong transaction value");
 
         // TODO meld two verification - they share indexes and header data
-
         // TODO check storage proofs -> storageHash
 
         // Check proofs are valid
-        bytes memory a = verifyTrieProof(txdata);
-        bytes memory b = verifyTrieProof(receiptdata);
-        return abi.encodePacked(a, b);
+        require(verifyTrieProof(txdata));
+        require(verifyTrieProof(receiptdata));
+        return true;
     }
 
     function verifyTrieProof(
         MerkleProof memory data
-    ) pure public returns (bool correct)
+    ) pure public returns (bool)
     {
         bytes memory node = data.proof[data.proofIndex];
         RLPDecode.Iterator memory dec = RLPDecode.toRlpItem(node).iterator();
@@ -186,10 +186,9 @@ contract Prover {
         else return false;
     }
 
-
     function verifyTrieProofBranch(
         MerkleProof memory data
-    ) pure public returns (bool correct)
+    ) pure public returns (bool)
     {
         bytes memory node = data.proof[data.proofIndex];
 
@@ -218,7 +217,7 @@ contract Prover {
     function verifyTrieProofLeafOrExtension(
         RLPDecode.Iterator memory dec,
         MerkleProof memory data
-    ) pure public returns (bool correct)
+    ) pure public returns (bool)
     {
         bytes memory nodekey = dec.next().toBytes();
         bytes memory nodevalue = dec.next().toBytes();
@@ -229,121 +228,53 @@ contract Prover {
         }
 
         if (prefix == 2) {
-            return verifyTrieProofLeafEven(nodekey, nodevalue, data);
+            uint256 length = nodekey.length - 1;
+            bytes memory actualKey = sliceTransform(nodekey, 33, length, false);
+            bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, length, false);
+            if (keccak256(data.expectedValue) == keccak256(nodevalue)) {
+                if (keccak256(actualKey) == keccak256(restKey)) return true;
+                if (keccak256(expandKeyEven(actualKey)) == keccak256(restKey)) return true;
+            }
         }
         else if (prefix == 3) {
-            return verifyTrieProofLeafOdd(nodekey, nodevalue, data);
+            bytes memory actualKey = sliceTransform(nodekey, 32, nodekey.length, true);
+            bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, data.key.length - data.keyIndex, false);
+            if (keccak256(data.expectedValue) == keccak256(nodevalue)) {
+                if (keccak256(actualKey) == keccak256(restKey)) return true;
+                if (keccak256(expandKeyOdd(actualKey)) == keccak256(restKey)) return true;
+            }
         }
         else if (prefix == 0) {
-            return verifyTrieProofExtensionEven(nodekey, nodevalue, data);
+            uint256 extensionLength = nodekey.length - 1;
+            bytes memory shared_nibbles = sliceTransform(nodekey, 33, extensionLength, false);
+            bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, extensionLength, false);
+            if (
+                keccak256(shared_nibbles) == keccak256(restKey) ||
+                keccak256(expandKeyEven(shared_nibbles)) == keccak256(restKey)
+
+            ) {
+                data.expectedRoot = b2b32(nodevalue);
+                data.keyIndex += extensionLength;
+                data.proofIndex += 1;
+                return verifyTrieProof(data);
+            }
         }
         else if (prefix == 1) {
-        }   return verifyTrieProofExtensionOdd(nodekey, nodevalue, data);
-
-        revert("Invalid proof");
-    }
-
-
-    function verifyTrieProofLeafEven(
-        bytes memory nodekey,
-        bytes memory nodevalue,
-        MerkleProof memory data
-    ) pure public returns (bool correct)
-    {
-        // even leaf node
-        uint256 length = nodekey.length - 1;
-        // bytes memory actualKey = slice(nodekey, 33, length);
-        // bytes memory restKey = slice(data.key, 32 + data.keyIndex, length);
-
-        bytes memory actualKey = new bytes(length);
-        bytes memory restKey = new bytes(length * 2);
-        bytes memory key = data.key;
-        uint256 keyIndex = data.keyIndex;
-        assembly {
-            mstore(add(actualKey, 32), shr(4, shl(4, mload(add(nodekey, 33)))))
-            mstore(add(restKey, 32), mload(add(key, add(32, keyIndex))))
-            mstore(add(restKey, 64), mload(add(key, add(64, keyIndex))))
+            uint256 extensionLength = nodekey.length;
+            bytes memory shared_nibbles = sliceTransform(nodekey, 32, extensionLength, true);
+            bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, extensionLength, false);
+            if (
+                keccak256(shared_nibbles) == keccak256(restKey) ||
+                keccak256(expandKeyEven(shared_nibbles)) == keccak256(restKey)
+            ) {
+                data.expectedRoot = b2b32(nodevalue);
+                data.keyIndex += extensionLength;
+                data.proofIndex += 1;
+                return verifyTrieProof(data);
+            }
         }
-
-        if (keccak256(data.expectedValue) == keccak256(nodevalue)) {
-            if (keccak256(actualKey) == keccak256(restKey)) return hex'1144';
-            if (keccak256(expandKeyEven(actualKey)) == keccak256(restKey)) return hex'1144';
-        }
-        if (data.expectedValue.length == 0) return true;
-        else return false;
-    }
-
-    function verifyTrieProofLeafOdd(
-        bytes memory nodekey,
-        bytes memory nodevalue,
-        MerkleProof memory data
-    ) pure public returns (bool correct)
-    {
-        // odd leaf node
-        bytes memory actualKey = new bytes(nodekey.length);
-        bytes memory restKey = new bytes((data.key.length - data.keyIndex) * 2);
-        bytes memory key = data.key;
-        uint256 keyIndex = data.keyIndex;
-        assembly {
-            mstore(add(actualKey, 32), shr(4, shl(4, mload(add(nodekey, 32)))))
-            mstore(add(restKey, 32), mload(add(key, add(32, keyIndex))))
-            mstore(add(restKey, 64), mload(add(key, add(64, keyIndex))))
-        }
-
-        if (keccak256(data.expectedValue) == keccak256(nodevalue)) {
-            if (keccak256(actualKey) == keccak256(restKey)) return hex'1155';
-            if (keccak256(expandKeyOdd(actualKey)) == keccak256(restKey)) return hex'1155';
-        }
-        if (data.expectedValue.length == 0) return true;
-        else return false;
-    }
-
-    function verifyTrieProofExtensionEven(
-        bytes memory nodekey,
-        bytes memory nodevalue,
-        MerkleProof memory data
-    ) pure public returns (bool correct)
-    {
-        // even extension node
-        uint256 extensionLength = nodekey.length - 1;
-        bytes memory shared_nibbles = slice(nodekey, 33, extensionLength);
-        bytes memory restKey = slice(data.key, 32 + data.keyIndex, extensionLength);
-
-        if (keccak256(shared_nibbles) == keccak256(restKey)) {
-            data.expectedRoot = b2b32(nodevalue);
-            data.keyIndex += extensionLength;
-            data.proofIndex += 1;
-            return verifyTrieProof(data);
-        }
-        if (data.expectedValue.length == 0) return true;
-        else return false;
-    }
-
-    function verifyTrieProofExtensionOdd(
-        bytes memory nodekey,
-        bytes memory nodevalue,
-        MerkleProof memory data
-    ) pure public returns (bool correct)
-    {
-
-        // odd extension node
-        uint256 extensionLength = nodekey.length;
-        bytes memory shared_nibbles = new bytes(extensionLength);
-        bytes memory restKey = new bytes(extensionLength);
-
-        bytes memory key = data.key;
-        uint256 keyIndex = data.keyIndex;
-
-        assembly {
-            mstore(add(shared_nibbles, 32), shr(4, shl(4, mload(add(nodekey, 32)))))
-            mstore(add(restKey, 32), mload(add(key, add(32, keyIndex))))
-        }
-
-        if (keccak256(shared_nibbles) == keccak256(restKey)) {
-            data.expectedRoot = b2b32(nodevalue);
-            data.keyIndex += extensionLength;
-            data.proofIndex += 1;
-            return verifyTrieProof(data);
+        else {
+            revert("Invalid proof");
         }
         if (data.expectedValue.length == 0) return true;
         else return false;
@@ -355,15 +286,41 @@ contract Prover {
         }
     }
 
-    function slice(bytes memory data, uint256 start, uint256 length) pure internal returns(bytes memory) {
+    function sliceTransform(
+        bytes memory data,
+        uint256 start,
+        uint256 length,
+        bool removeFirstNibble
+    )
+        pure internal returns(bytes memory)
+    {
+        uint256 slots = length / 32;
+        uint256 rest = (length % 32) * 8;
+        uint256 pos = 32;
+        uint256 si = 0;
+        uint256 source;
         bytes memory newdata = new bytes(length);
-        // TODO this is used for keys, which are max 64 bytes long when expanded
-        // fixme precision
         assembly {
-            mstore(add(newdata, 32), mload(add(data, add(32, start))))
-            mstore(add(newdata, 64), mload(add(data, add(64, start))))
+            source := add(start, data)
+
+            if removeFirstNibble {
+                mstore(
+                    add(newdata, pos),
+                    shr(4, shl(4, mload(add(source, pos))))
+                )
+                si := 1
+                pos := add(pos, 32)
+            }
+
+            for {let i := si} lt(i, slots) {i := add(i, 1)} {
+                mstore(add(newdata, pos), mload(add(source, pos)))
+                pos := add(pos, 32)
+            }
+            mstore(add(newdata, pos), shl(
+                rest,
+                shr(rest, mload(add(source, pos)))
+            ))
         }
-        return newdata;
     }
 
     function getHash(bytes memory data) public pure returns (bytes32 hash) {
