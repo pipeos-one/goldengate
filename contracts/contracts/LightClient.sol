@@ -3,15 +3,16 @@ pragma experimental ABIEncoderV2;
 
 import "./EthereumDecoder.sol";
 
-contract EthereumClient {
+contract LightClient {
     uint256 public lastBlockHeight = 0;
 
     mapping(uint256 => bytes32) public blockHashes;
 
     event BlockAdded(uint256 indexed height, bytes32 indexed hash);
 
-    constructor(bytes32 hash0) public {
-        blockHashes[0] = hash0;
+    constructor(bytes32 hash0, uint256 height) public {
+        blockHashes[height] = hash0;
+        lastBlockHeight = height;
     }
 
     function getBlockHash(uint256 height) view public returns (bytes32 hash) {
@@ -26,7 +27,8 @@ contract EthereumClient {
         _addBlock(header.number, header.hash);
     }
 
-    function _addBlock(uint256 height, bytes32 hash) internal {
+    // Only development!
+    function _addBlock(uint256 height, bytes32 hash) public {
         blockHashes[height] = hash;
         lastBlockHeight = height;
         emit BlockAdded(height, hash);
