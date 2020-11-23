@@ -210,8 +210,14 @@ library EthereumDecoder {
         uint idx;
         while(it.hasNext()) {
             if ( idx == 0 )      transaction.nonce       = it.next().toUint();
+            else if ( idx == 1 ) transaction.gasPrice        = it.next().toUint();
+            else if ( idx == 2 ) transaction.gasLimit        = it.next().toUint();
             else if ( idx == 3 ) transaction.to        = it.next().toAddress();
             else if ( idx == 4 ) transaction.value       = it.next().toUint();
+            else if ( idx == 5 ) transaction.data       = it.next().toBytes();
+            else if ( idx == 6 ) transaction.v       = uint8(it.next().toUint());
+            else if ( idx == 7 ) transaction.r       = bytes32(it.next().toUint());
+            else if ( idx == 8 ) transaction.s       = bytes32(it.next().toUint());
             else it.next();
             idx++;
         }
