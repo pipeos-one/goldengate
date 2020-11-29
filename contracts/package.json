@@ -7,7 +7,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "truffle test test/test.js",
+    "test-geth": "truffle test test/test.js --network geth",
+    "test-integration": "truffle test test/test_integration.js --network geth"
   },
   "author": "",
   "license": "GPLv3",

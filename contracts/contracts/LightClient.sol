@@ -4,33 +4,48 @@ pragma experimental ABIEncoderV2;
 import "./EthereumDecoder.sol";
 
 contract LightClient {
-    uint256 public lastBlockHeight = 0;
+    uint256 public minNumberBlocks;
+    uint256 public totalDifficulty;
+    EthereumDecoder.BlockHeader lastBlock;
 
     mapping(uint256 => bytes32) public blockHashes;
 
     event BlockAdded(uint256 indexed height, bytes32 indexed hash);
 
-    constructor(bytes32 hash0, uint256 height) public {
-        blockHashes[height] = hash0;
-        lastBlockHeight = height;
+    constructor(uint256 _minNumberBlocks, EthereumDecoder.BlockHeader memory _lastBlock) public {
+        minNumberBlocks = _minNumberBlocks;
+        lastBlock = _lastBlock;
+        blockHashes[lastBlock.number] = lastBlock.hash;
     }
 
     function getBlockHash(uint256 height) view public returns (bytes32 hash) {
         return blockHashes[height];
     }
 
-    function addBlock(EthereumDecoder.BlockHeader memory header) public {
-        require(header.number == lastBlockHeight + 1, "Wrong height");
-        require(header.parentHash == blockHashes[lastBlockHeight], "Parent not found");
-        require(header.hash == EthereumDecoder.getBlockHash(header), "Invalid hash");
-        // verify difficulty
-        _addBlock(header.number, header.hash);
+    function addBlocks(EthereumDecoder.BlockHeader[] memory headers) public {
+        EthereumDecoder.BlockHeader memory _lastBlock = lastBlock;
+        for (uint256 i = 0; i < headers.length; i++) {
+            EthereumDecoder.BlockHeader memory header = headers[i];
+            require(header.number == _lastBlock.number + 1, "Wrong number");
+            require(header.parentHash == _lastBlock.hash, "Parent not found");
+            require(header.hash == EthereumDecoder.getBlockHash(header), "Invalid hash");
+            // require(header.timestamp < _lastBlock.timestamp, "Invalid timestamp");
+            require(header.extraData.length <= 32, "Invalid extraData");
+            require(header.gasUsed < header.gasLimit, "Invalid gas");
+            require(header.gasLimit > _lastBlock.gasLimit * 1023 / 1024, "Invalid gasLimit1");
+            require(header.gasLimit < _lastBlock.gasLimit * 1025 / 1024, "Invalid gasLimit2");
+            require(header.gasLimit > 5000, "Invalid gasLimit3");
+            // require(header.difficulty < header.difficulty * 101 / 100, "Invalid difficulty1");
+            // require(header.difficulty > header.difficulty * 99 / 100, "Invalid difficulty2");
+
+            _lastBlock = header;
+            _addBlock(header);
+        }
     }
 
-    // Only development!
-    function _addBlock(uint256 height, bytes32 hash) public {
-        blockHashes[height] = hash;
-        lastBlockHeight = height;
-        emit BlockAdded(height, hash);
+    function _addBlock(EthereumDecoder.BlockHeader memory header) public {
+        blockHashes[header.number] = header.hash;
+        lastBlock = header;
+        emit BlockAdded(header.number, header.hash);
     }
 }

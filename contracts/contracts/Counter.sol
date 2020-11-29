@@ -1,7 +1,7 @@
 pragma solidity ^0.7.0;
 
 contract Counter {
-    int32 count = 5;
+    int32 public count = 5;
 
     event LogChange(bytes message);
 

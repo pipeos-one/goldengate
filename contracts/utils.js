@@ -3,6 +3,7 @@ const ethblock = require('@ethereumjs/block');
 // const ethtx = require('@ethereumjs/tx');
 const { rlp } = require('ethereumjs-util');
 const MPT = require('merkle-patricia-tree');
+const { GetProof } = require('eth-proof');
 
 const Trie = MPT.BaseTrie;
 
@@ -123,6 +124,7 @@ function expandkey(hexvalue) {
 }
 
 async function getTransactionProof(getProof, prover, txhash) {
+    if (typeof getProof === 'string') getProof = new GetProof(getProof);
     const proof = await _getTransactionProof(getProof, txhash);
     const proofData = proof.proof.map(node => buffer2hex(rlp.encode(node)));
     const block = await prover.toBlockHeader(proof.headerData);
@@ -138,6 +140,7 @@ async function getTransactionProof(getProof, prover, txhash) {
 }
 
 async function getReceiptProof(getProof, prover, txhash) {
+    if (typeof getProof === 'string') getProof = new GetProof(getProof);
     const proof = await _getReceiptProof(getProof, txhash);
     const proofData = proof.proof.map(node => buffer2hex(rlp.encode(node)));
     const block = await prover.toBlockHeader(proof.headerData);
@@ -195,6 +198,7 @@ async function _getAccountProof(getProof, address, blockHash) {
 }
 
 async function getAccountProof(web3, getProof, prover, address, blockHash) {
+    if (typeof getProof === 'string') getProof = new GetProof(getProof);
     const proof = await _getAccountProof(getProof, address, blockHash);
     const proofData = proof.proof.map(node => buffer2hex(rlp.encode(node)));
     const block = await prover.toBlockHeader(proof.headerData);
@@ -224,6 +228,7 @@ async function _getStorageProof(getProof, address, storageAddress, blockHash) {
 }
 
 async function getStorageProof(getProof, prover, address, storageAddress, blockHash) {
+    if (typeof getProof === 'string') getProof = new GetProof(getProof);
     const proof = await _getStorageProof(getProof, address, storageAddress, blockHash);
     const proofData = proof.proof.map(node => buffer2hex(rlp.encode(node)));
     const block = await prover.toBlockHeader(proof.headerData);

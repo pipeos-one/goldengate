@@ -49,14 +49,14 @@ module.exports = {
     // },
 
     // Another network with more advanced options...
-    // advanced: {
-      // port: 8777,             // Custom port
-      // network_id: 1342,       // Custom network
-      // gas: 8500000,           // Gas sent with each transaction (default: ~6700000)
-      // gasPrice: 20000000000,  // 20 gwei (in wei) (default: 100 gwei)
-      // from: <address>,        // Account to send txs from (default: accounts[0])
-      // websockets: true        // Enable EventEmitter interface for web3 (default: false)
-    // },
+    geth: {
+      host: "127.0.0.1",
+      port: 8645,
+      network_id: 1337,
+      gas: 8000000,
+      gasPrice: 1,
+      websockets: false
+    },
 
     // Useful for deploying to a public network.
     // NB: It's important to wrap the provider as a function.
