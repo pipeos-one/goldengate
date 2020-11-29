@@ -5,17 +5,19 @@ import "./EthereumDecoder.sol";
 
 contract LightClient {
     uint256 public minNumberBlocks;
+    uint256 public registerPeriod;
     uint256 public totalDifficulty;
+    EthereumDecoder.BlockHeader lastValidBlock;
     EthereumDecoder.BlockHeader lastBlock;
 
     mapping(uint256 => bytes32) public blockHashes;
 
     event BlockAdded(uint256 indexed height, bytes32 indexed hash);
 
-    constructor(uint256 _minNumberBlocks, EthereumDecoder.BlockHeader memory _lastBlock) public {
+    constructor(uint256 _minNumberBlocks, EthereumDecoder.BlockHeader memory _lastValidBlock) public {
         minNumberBlocks = _minNumberBlocks;
-        lastBlock = _lastBlock;
-        blockHashes[lastBlock.number] = lastBlock.hash;
+        lastValidBlock = _lastValidBlock;
+        blockHashes[lastValidBlock.number] = lastValidBlock.hash;
     }
 
     function getBlockHash(uint256 height) view public returns (bytes32 hash) {
@@ -23,7 +25,7 @@ contract LightClient {
     }
 
     function addBlocks(EthereumDecoder.BlockHeader[] memory headers) public {
-        EthereumDecoder.BlockHeader memory _lastBlock = lastBlock;
+        EthereumDecoder.BlockHeader memory _lastBlock = lastValidBlock;
         for (uint256 i = 0; i < headers.length; i++) {
             EthereumDecoder.BlockHeader memory header = headers[i];
             require(header.number == _lastBlock.number + 1, "Wrong number");
@@ -45,7 +47,7 @@ contract LightClient {
 
     function _addBlock(EthereumDecoder.BlockHeader memory header) public {
         blockHashes[header.number] = header.hash;
-        lastBlock = header;
+        lastValidBlock = header;
         emit BlockAdded(header.number, header.hash);
     }
 }

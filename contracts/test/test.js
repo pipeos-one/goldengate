@@ -25,10 +25,11 @@ contract('EthereumClient', async accounts => {
     const blockNumber = 1;
 
     it('deploy', async () => {
-        client = await EthereumClient.deployed();
-        prover = await Prover.deployed();
-        counter = await Counter.deployed();
-        countertest = await CounterTest.deployed();
+        counter = await Counter.new();
+        const block = await web3.eth.getBlock(0);
+        client = await EthereumClient.new(6, block);
+        prover = await Prover.new(client.address);
+        countertest = await CounterTest.new(prover.address);
     });
 
     it('rlp encoding', async () => {
@@ -38,7 +39,6 @@ contract('EthereumClient', async accounts => {
         const encoded2 = await prover.encodeproof(data);
         assert.equal(encoded, encoded2);
         assert.sameMembers(data, decoded);
-
     });
 
     it('block hash', async () => {
@@ -46,7 +46,6 @@ contract('EthereumClient', async accounts => {
         const header = getHeader(block);
         assert.equal(buffer2hex(header.hash()), block.hash);
         const serialized = header.serialize();
-
         const data = await prover.getBlockRlpData(block);
         assert.equal(buffer2hex(serialized), data);
 

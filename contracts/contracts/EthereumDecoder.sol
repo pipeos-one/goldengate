@@ -26,6 +26,7 @@ library EthereumDecoder {
         bytes extraData;
         bytes32 mixHash;
         uint64 nonce;
+        // totalDifficulty
     }
 
     struct Account {
