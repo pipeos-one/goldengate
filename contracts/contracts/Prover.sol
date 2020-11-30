@@ -6,7 +6,7 @@ import "./RLPDecode.sol";
 import "./EthereumDecoder.sol";
 
 interface EthereumClient {
-    function getBlockHash(uint256 height) view external returns (bytes32 hash);
+    function getValidBlockHash(uint256 height) view external returns (bytes32 hash);
 }
 
 contract Prover {
@@ -111,7 +111,7 @@ contract Prover {
         require(blockHash == header.hash, "Header data or hash invalid");
 
         // Check block hash was registered in light client
-        bytes32 blockHashClient = client.getBlockHash(header.number);
+        bytes32 blockHashClient = client.getValidBlockHash(header.number);
         require(blockHashClient > 0, "Unregistered block hash");
 
         // check tx & receipt have same key
@@ -152,7 +152,7 @@ contract Prover {
         // require(blockHash == header.hash, "Header data or hash invalid");
 
         // Check block hash was registered in light client
-        bytes32 blockHashClient = client.getBlockHash(header.number);
+        bytes32 blockHashClient = client.getValidBlockHash(header.number);
         require(blockHashClient > 0, "Unregistered block hash");
 
         // Check storage root is part of the account
@@ -183,7 +183,7 @@ contract Prover {
         require(blockHash == header.hash, "Header data or hash invalid");
 
         // Check block hash was registered in light client
-        bytes32 blockHashClient = client.getBlockHash(header.number);
+        bytes32 blockHashClient = client.getValidBlockHash(header.number);
         require(blockHashClient > 0, "Unregistered block hash");
 
         // decode receipt status and check it is true

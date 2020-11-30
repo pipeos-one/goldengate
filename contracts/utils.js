@@ -28,7 +28,7 @@ function getHeader(block) {
         coinbase: block.miner,
         extraData: block.extraData,
         gasUsed: block.gasUsed,
-        // totalDifficulty: block.totalDifficulty,
+        totalDifficulty: block.totalDifficulty,
         // size: block.size,
     }
     const header = ethblock.BlockHeader.fromHeaderData(headerData);

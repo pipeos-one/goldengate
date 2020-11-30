@@ -2,6 +2,7 @@ const EthereumClient = artifacts.require('LightClient.sol');
 const Prover = artifacts.require('Prover.sol');
 const Counter = artifacts.require('Counter.sol');
 const CounterTest = artifacts.require('CounterTest.sol');
+const LightClientMock = artifacts.require('LightClientMock.sol');
 const rlp = require('rlp');
 const { GetProof } = require('eth-proof');
 const proofs = require('./data');
@@ -18,7 +19,7 @@ const {
     getTransactionProof,
 } = require('../utils');
 
-const getProof = new GetProof("https://ropsten.infura.io/v3/18559f1ef1204f62b3cd0aec5ae1ab82");
+const getProof = new GetProof("https://ropsten.infura.io/v3/" + process.env.INFURA_TOKEN);
 
 contract('EthereumClient', async accounts => {
     let prover, client, counter, countertest;
@@ -27,8 +28,9 @@ contract('EthereumClient', async accounts => {
     it('deploy', async () => {
         counter = await Counter.new();
         const block = await web3.eth.getBlock(0);
-        client = await EthereumClient.new(6, block);
-        prover = await Prover.new(client.address);
+        client = await EthereumClient.new(3, 10, 3, block);
+        clientmock = await LightClientMock.new();
+        prover = await Prover.new(clientmock.address);
         countertest = await CounterTest.new(prover.address);
     });
 
@@ -81,17 +83,79 @@ contract('EthereumClient', async accounts => {
     });
 
     it('client - adding blocks', async () => {
+        // 19 blocks
+        let header;
         const block1 = await web3.eth.getBlock(1);
         const block2 = await web3.eth.getBlock(2);
         const block3 = await web3.eth.getBlock(3);
-        await client.addBlocks([block1, block2, block3]);
+        const block4 = await web3.eth.getBlock(4);
+        const block5 = await web3.eth.getBlock(5);
+        const block6 = await web3.eth.getBlock(6);
+        const block7 = await web3.eth.getBlock(7);
+        const block8 = await web3.eth.getBlock(8);
+        const block9 = await web3.eth.getBlock(9);
+        const block10 = await web3.eth.getBlock(10);
+        const block11 = await web3.eth.getBlock(11);
+        const block12 = await web3.eth.getBlock(12);
+        const proposal1 = [block1, block2, block3];
+        const proposal2 = proposal1.concat([block4, block5, block6, block7]);
+        const proposal3 = proposal2.concat([block8, block9, block10, block11]);
+        const proposal4 = proposal3.slice(4).concat([block12]);
 
-        const hash1 = await client.getBlockHash(1);
-        const hash2 = await client.getBlockHash(2);
-        const hash3 = await client.getBlockHash(3);
-        assert.equal(hash1, block1.hash);
-        assert.equal(hash2, block2.hash);
-        assert.equal(hash3, block3.hash);
+        assert.equal(await client.blockTick(), 0);
+        assert.equal((await client.lastValidBlock()).number, 0);
+
+        await client.addBlocks(proposal1);
+        header = await client.lastBlock();
+        assert.equal(header.hash, block3.hash);
+        assert.equal(header.parentHash, block3.parentHash);
+        assert.equal(header.number, block3.number);
+        assert.equal(await client.getBlockHash(block1.number), block1.hash);
+        assert.equal(await client.getBlockHash(block2.number), block2.hash);
+        assert.equal(await client.getBlockHash(block3.number), block3.hash);
+        assert.equal(await client.blockTick(), 0);
+        assert.equal((await client.lastValidBlock()).number, 0);
+
+        receipt = await client.addBlocks(proposal2);
+        header = await client.lastBlock();
+        assert.equal(header.hash, block7.hash);
+        assert.equal(header.parentHash, block7.parentHash);
+        assert.equal(header.number, block7.number);
+        assert.equal(await client.getBlockHash(block1.number), block1.hash);
+        assert.equal(await client.getBlockHash(block2.number), block2.hash);
+        assert.equal(await client.getBlockHash(block3.number), block3.hash);
+        assert.equal(await client.getBlockHash(block4.number), block4.hash);
+        assert.equal(await client.getBlockHash(block5.number), block5.hash);
+        assert.equal(await client.getBlockHash(block6.number), block6.hash);
+        assert.equal(await client.getBlockHash(block7.number), block7.hash);
+
+        assert.equal(await client.blockTick(), 4);
+        assert.equal((await client.lastValidBlock()).number, 0);
+
+        await expectFailure(client.addBlocks(proposal3), "Invalid number of blocks", "Proposal3 should have failed");
+
+        await client.updateLastValidBlock(block4);
+        assert.equal((await client.lastValidBlock()).number, 4);
+
+        receipt = await client.addBlocks(proposal4);
+        header = await client.lastBlock();
+        assert.equal(header.hash, block12.hash);
+        assert.equal(header.parentHash, block12.parentHash);
+        assert.equal(header.number, block12.number);
+        assert.equal(await client.getBlockHash(block1.number), block1.hash);
+        assert.equal(await client.getBlockHash(block2.number), block2.hash);
+        assert.equal(await client.getBlockHash(block3.number), block3.hash);
+        assert.equal(await client.getBlockHash(block4.number), block4.hash);
+        assert.equal(await client.getBlockHash(block5.number), block5.hash);
+        assert.equal(await client.getBlockHash(block6.number), block6.hash);
+        assert.equal(await client.getBlockHash(block7.number), block7.hash);
+        assert.equal(await client.getBlockHash(block8.number), block8.hash);
+        assert.equal(await client.getBlockHash(block9.number), block9.hash);
+        assert.equal(await client.getBlockHash(block10.number), block10.hash);
+        assert.equal(await client.getBlockHash(block11.number), block11.hash);
+        assert.equal(await client.getBlockHash(block12.number), block12.hash);
+        assert.equal(await client.blockTick(), 9);
+        assert.equal((await client.lastValidBlock()).number, 4);
     });
 
     describe('receipt trie', function() {
@@ -129,7 +193,7 @@ contract('EthereumClient', async accounts => {
         const txProof = proofs.balance.transaction;
         const header = proofs.balance.header;
 
-        await client._addBlock(header);
+        await clientmock._addBlock(header);
         const response = await prover.verifyBalance(header, txProof, receiptProof, value);
         assert.equal(response, true);
     });
@@ -158,7 +222,7 @@ contract('EthereumClient', async accounts => {
         }
         const header = data.header;
 
-        await client._addBlock(data.header);
+        await clientmock._addBlock(data.header);
         const response = await prover.verifyStorage(header, accountProof, storageProof);
         assert.equal(response, true);
     });
@@ -182,10 +246,22 @@ contract('EthereumClient', async accounts => {
         const receiptProof = await getReceiptProof(_getProof, prover, receipt.receipt.transactionHash);
 
         // Forward transaction on Chain B
-        await client._addBlock(header);
+        await clientmock._addBlock(header);
         receipt = await prover.forwardAndVerify(header, accountProof, txProof, receiptProof, address);
 
         counterB += 3;
         assert.equal(counterB, (await countertest.count2()).toNumber());
     });
 });
+
+function fullToMin(header) {
+    const {hash, parentHash, difficulty, number, gasLimit, gasUsed, timestamp, totalDifficulty} = header;
+    return {hash, parentHash, difficulty, number, gasLimit, gasUsed, timestamp, totalDifficulty};
+}
+
+async function expectFailure(promise, errorMessage, successMessage) {
+    receipt = await promise.catch(e => {
+        assert.equal(e.message.includes(errorMessage), true);
+    });
+    expect(receipt, successMessage).to.be.undefined;
+}
