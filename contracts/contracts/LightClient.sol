@@ -46,15 +46,12 @@ contract LightClient {
 
     function tick() public {
         if (lastBlock.number > blockTick + registerPeriod) {
-            doChores();
-            tick();
-        }
-    }
+            // Finalize 1 block
+            blockTick += 1;
+            emit BlockAdded(blockTick, getBlockHash(blockTick));
 
-    function doChores() internal {
-        // Finalize 1 block
-        blockTick += 1;
-        emit BlockAdded(blockTick, getBlockHash(blockTick));
+            // tick();
+        }
     }
 
     function updateLastValidBlock(EthereumDecoder.BlockHeader memory header) public {
@@ -71,15 +68,16 @@ contract LightClient {
     function addBlocks(EthereumDecoder.BlockHeader[] memory headers) public {
         require(headers.length >= minNumberBlocks && headers.length <= maxNumberBlocks, "Invalid number of blocks");
 
-        // Proposals always continue the last valid block
-        require(headers[0].number == lastValidBlock.number + 1, "Invalid first block number. Must be lastValidBlock.number + 1");
-
         bytes32[] memory newhashes = new bytes32[](headers.length);
         uint256 commonBlockNumber;
 
         BlockHeaderMin memory _lastBlock = lastValidBlock;
         for (uint256 i = 0; i < headers.length; i++) {
             EthereumDecoder.BlockHeader memory header = headers[i];
+
+            // Continue until we find the next block after the last valid block
+            if (header.number < _lastBlock.number + 1) continue;
+
             require(header.number == _lastBlock.number + 1, "Wrong number");
             require(header.parentHash == _lastBlock.hash, "Parent not found");
             require(header.hash == EthereumDecoder.getBlockHash(header), "Invalid hash");
@@ -113,8 +111,6 @@ contract LightClient {
 
         uint256 lastindex = startCopy - headers[0].number;
         registerProposal(_lastBlock, newhashes, lastindex);
-
-        tick();
     }
 
     function registerProposal(BlockHeaderMin memory _lastBlock, bytes32[] memory _hashes, uint256 _start) internal {

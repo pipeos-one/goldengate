@@ -1,6 +1,6 @@
 {
   "name": "statebridge-contracts",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "directories": {
@@ -11,7 +11,7 @@
     "test-geth": "truffle test test/test.js --network geth",
     "test-integration": "truffle test test/test_integration.js --network geth"
   },
-  "author": "",
+  "author": "Loredana Cirstea <loredana.cirstea@gmail.com>",
   "license": "GPLv3",
   "dependencies": {
     "@ethereumjs/block": "^3.0.0-beta.2",
@@ -20,7 +20,9 @@
     "eth-lib": "^0.1.29",
     "eth-proof": "^2.1.4",
     "merkle-patricia-tree": "^4.0.0",
-    "rlp": "^2.2.6"
+    "rlp": "^2.2.6",
+    "web3": "^1.3.0",
+    "yargs": "^16.1.1"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-truffle5": "^2.0.0",

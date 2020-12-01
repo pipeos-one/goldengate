@@ -17,7 +17,7 @@ const {
     getReceiptProof,
     getAccountProof,
     getTransactionProof,
-} = require('../utils');
+} = require('../scripts/utils');
 
 const getProof = new GetProof("https://ropsten.infura.io/v3/" + process.env.INFURA_TOKEN);
 
@@ -253,11 +253,6 @@ contract('EthereumClient', async accounts => {
         assert.equal(counterB, (await countertest.count2()).toNumber());
     });
 });
-
-function fullToMin(header) {
-    const {hash, parentHash, difficulty, number, gasLimit, gasUsed, timestamp, totalDifficulty} = header;
-    return {hash, parentHash, difficulty, number, gasLimit, gasUsed, timestamp, totalDifficulty};
-}
 
 async function expectFailure(promise, errorMessage, successMessage) {
     receipt = await promise.catch(e => {
