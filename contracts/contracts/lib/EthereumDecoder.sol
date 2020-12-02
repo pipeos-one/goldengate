@@ -1,8 +1,8 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./RLPEncode.sol";
-import "./RLPDecode.sol";
+import "../external_lib/RLPEncode.sol";
+import "../external_lib/RLPDecode.sol";
 
 
 library EthereumDecoder {

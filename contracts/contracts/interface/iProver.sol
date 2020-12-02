@@ -9,48 +9,43 @@ interface iProver {
 
     function verifyTrieProof(MPT.MerkleProof memory data) pure external returns (bool);
 
+    function verifyHeader(
+        EthereumDecoder.BlockHeader memory header
+    ) view external returns (bool valid, string memory reason);
+
     function verifyTransaction(
         EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory txdata
-    ) view external returns (bool);
+    ) view external returns (bool valid, string memory reason);
 
     function verifyReceipt(
         EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory receiptdata
-    ) view external returns (bool);
+    ) view external returns (bool valid, string memory reason);
 
     function verifyAccount(
         EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory accountdata
-    ) view external returns (bool);
+    ) view external returns (bool valid, string memory reason);
 
     function verifyLog(
-        EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory receiptdata,
         bytes memory logdata,
         uint256 logIndex
-    ) view external returns (bool);
+    ) view external returns (bool valid, string memory reason);
 
     function verifyTransactionAndStatus(
         EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory receiptdata
-    ) view external returns (bool);
+    ) view external returns (bool valid, string memory reason);
 
     function verifyCode(
         EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory accountdata
-    ) view external returns (bool);
-
-    function verifyBalance(
-        EthereumDecoder.BlockHeader memory header,
-        MPT.MerkleProof memory txdata,
-        MPT.MerkleProof memory receiptdata,
-        uint256 value
-    ) view external returns (bool);
+    ) view external returns (bool valid, string memory reason);
 
     function verifyStorage(
-        EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory accountProof,
         MPT.MerkleProof memory storageProof
-    ) view external returns (bool);
+    ) view external returns (bool valid, string memory reason);
 }

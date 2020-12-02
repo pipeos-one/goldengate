@@ -1,7 +1,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./RLPDecode.sol";
+import "../external_lib/RLPDecode.sol";
 
 library MPT {
     using RLPDecode for RLPDecode.RLPItem;

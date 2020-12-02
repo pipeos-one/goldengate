@@ -3,6 +3,7 @@ const Prover = artifacts.require('Prover.sol');
 const Counter = artifacts.require('Counter.sol');
 const CounterTest = artifacts.require('CounterTest.sol');
 const LightClientMock = artifacts.require('LightClientMock.sol');
+const ProverStateSync = artifacts.require('ProverStateSync.sol');
 const rlp = require('rlp');
 const { GetProof } = require('eth-proof');
 const proofs = require('./data');
@@ -22,7 +23,8 @@ const {
 const getProof = new GetProof("https://ropsten.infura.io/v3/" + process.env.INFURA_TOKEN);
 
 contract('EthereumClient', async accounts => {
-    let prover, client, counter, countertest;
+    let prover, client, counter;
+    let proverStateSync;
     const blockNumber = 1;
 
     it('deploy', async () => {
@@ -31,7 +33,7 @@ contract('EthereumClient', async accounts => {
         client = await EthereumClient.new(3, 10, 3, block);
         clientmock = await LightClientMock.new();
         prover = await Prover.new(clientmock.address);
-        countertest = await CounterTest.new(prover.address);
+        proverStateSync = await ProverStateSync.new(clientmock.address);
     });
 
     it('block hash', async () => {
@@ -172,6 +174,22 @@ contract('EthereumClient', async accounts => {
         assert.equal(await client.getLastVerifiable(), 4);
     });
 
+    it('prover - verify header', async () => {
+        let result;
+        const header = await web3.eth.getBlock(1);
+
+        result = await prover.verifyHeader(header);
+        assert.equal(result.valid, false);
+
+        await clientmock._addBlock(header);
+        result = await prover.verifyHeader(header);
+        assert.equal(result.valid, true);
+        assert.equal(await prover.getBlockHash(header), header.hash);
+
+        result = await prover.verifyHeader({...header, number: 4})
+        assert.equal(result.valid, false);
+    });
+
     describe('receipt trie', function() {
         proofs.receipt.forEach((proof, i) => {
           it('receipt trie ' + i, async function() {
@@ -188,16 +206,16 @@ contract('EthereumClient', async accounts => {
             let response = await prover.verifyTrieProof(data);
             assert.equal(response, true);
 
-            response = await prover.verifyLog(block, data, proof.logEntry, 0);
-            assert.equal(response, true);
+            response = await prover.verifyLog(data, proof.logEntry, 0);
+            assert.equal(response.valid, true);
 
             const log = await prover.toReceiptLog(proof.logEntry);
             const changedEntry = await prover.getLog({
                 ...log,
                 contractAddress: '0x20A6284411E6A327F3b2eF5E5931745A239F6F97',
             });
-            response = await prover.verifyLog(block, data, changedEntry, 0);
-            assert.equal(response, false);
+            response = await prover.verifyLog(data, changedEntry, 0);
+            assert.equal(response.valid, false);
           });
         });
     });
@@ -206,20 +224,6 @@ contract('EthereumClient', async accounts => {
         const txhash = '0x3baef8672605d65265accd178796cc460e5f9248c083cd2577d95c432f74f6e7';
         const proof = await getReceiptProof(getProof, prover, txhash);
         const response = await prover.verifyTrieProof(proof);
-        assert.equal(response, true);
-    });
-
-    it('verify balance proof from chain', async () => {
-        const txhash = '0x64e0262b607b9c3eedac0b070e9096123ac13003ea152a66e7cd2856e64785e9'
-        const value = web3.utils.toWei('4.999097');
-        // const receiptProof = await getReceiptProof(getProof, prover, txhash);
-        // const txProof = await getTransactionProof(getProof, prover, txhash);
-        const receiptProof = proofs.balance.receipt;
-        const txProof = proofs.balance.transaction;
-        const header = proofs.balance.header;
-
-        await clientmock._addBlock(header);
-        const response = await prover.verifyBalance(header, txProof, receiptProof, value);
         assert.equal(response, true);
     });
 
@@ -247,15 +251,25 @@ contract('EthereumClient', async accounts => {
         }
         const header = data.header;
 
-        await clientmock._addBlock(data.header);
-        const response = await prover.verifyStorage(header, accountProof, storageProof);
-        assert.equal(response, true);
+        // let response = await prover.verifyHeader(header);
+        // assert.equal(response.valid, false, response.reason);
+
+        // await clientmock._addBlock(header);
+        // response = await prover.verifyHeader(header);
+        // assert.equal(response.valid, true, response.reason);
+
+        response = await prover.verifyAccount(header, accountProof);
+        assert.equal(response.valid, true, response.reason);
+
+        response = await prover.verifyStorage(accountProof, storageProof);
+        assert.equal(response.valid, true, response.reason);
     });
 
-    it.skip('verify Counter same chain (mimic two chains)', async () => {
+    it.skip('verify Counter same chain (mimic two chains) --network geth', async () => {
         let receipt;
         const _getProof = new GetProof("http://127.0.0.1:8645");
         const address = accounts[2];
+        const countertest = await CounterTest.new(proverStateSync.address);
         await web3.eth.personal.unlockAccount(address, "0", 60000);
 
         let counterA = (await countertest.count()).toNumber();
@@ -266,13 +280,13 @@ contract('EthereumClient', async accounts => {
         counterA += 3;
         assert.equal(counterA, (await countertest.count()).toNumber());
         const header = await web3.eth.getBlock(receipt.receipt.blockNumber);
-        const accountProof = await getAccountProof(web3, _getProof, prover, address, receipt.receipt.blockHash);
-        const txProof = await getTransactionProof(_getProof, prover, receipt.receipt.transactionHash);
-        const receiptProof = await getReceiptProof(_getProof, prover, receipt.receipt.transactionHash);
+        const accountProof = await getAccountProof(web3, _getProof, proverStateSync, address, receipt.receipt.blockHash);
+        const txProof = await getTransactionProof(_getProof, proverStateSync, receipt.receipt.transactionHash);
+        const receiptProof = await getReceiptProof(_getProof, proverStateSync, receipt.receipt.transactionHash);
 
         // Forward transaction on Chain B
         await clientmock._addBlock(header);
-        receipt = await prover.forwardAndVerify(header, accountProof, txProof, receiptProof, address);
+        receipt = await proverStateSync.forwardAndVerify(header, accountProof, txProof, receiptProof, address);
 
         counterB += 3;
         assert.equal(counterB, (await countertest.count2()).toNumber());
