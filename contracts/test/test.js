@@ -3,6 +3,7 @@ const Prover = artifacts.require('Prover.sol');
 const Counter = artifacts.require('Counter.sol');
 const CounterTest = artifacts.require('CounterTest.sol');
 const LightClientMock = artifacts.require('LightClientMock.sol');
+const MPTWrap = artifacts.require('MPTWrap.sol');
 const rlp = require('rlp');
 const { GetProof } = require('eth-proof');
 const proofs = require('./data');
@@ -23,6 +24,7 @@ const getProof = new GetProof("https://ropsten.infura.io/v3/" + process.env.INFU
 
 contract('EthereumClient', async accounts => {
     let prover, client, counter, countertest;
+    let mpt;
     const blockNumber = 1;
 
     it('deploy', async () => {
@@ -32,15 +34,7 @@ contract('EthereumClient', async accounts => {
         clientmock = await LightClientMock.new();
         prover = await Prover.new(clientmock.address);
         countertest = await CounterTest.new(prover.address);
-    });
-
-    it('rlp encoding', async () => {
-        const data = proofs.receipt[2].proof[0];
-        const encoded = buffer2hex(rlp.encode(data));
-        const decoded = await prover.rlp2List(encoded);
-        const encoded2 = await prover.encodeproof(data);
-        assert.equal(encoded, encoded2);
-        assert.sameMembers(data, decoded);
+        mpt = await MPTWrap.new();
     });
 
     it('block hash', async () => {
@@ -129,8 +123,14 @@ contract('EthereumClient', async accounts => {
         assert.equal(await client.getBlockHash(block6.number), block6.hash);
         assert.equal(await client.getBlockHash(block7.number), block7.hash);
 
-        assert.equal(await client.blockTick(), 4);
+        assert.equal(await client.blockTick(), 0);
         assert.equal((await client.lastValidBlock()).number, 0);
+
+        await client.tick();
+        await client.tick();
+        await client.tick();
+        await client.tick();
+        assert.equal(await client.blockTick(), 4);
 
         await expectFailure(client.addBlocks(proposal3), "Invalid number of blocks", "Proposal3 should have failed");
 
@@ -154,7 +154,7 @@ contract('EthereumClient', async accounts => {
         assert.equal(await client.getBlockHash(block10.number), block10.hash);
         assert.equal(await client.getBlockHash(block11.number), block11.hash);
         assert.equal(await client.getBlockHash(block12.number), block12.hash);
-        assert.equal(await client.blockTick(), 9);
+        assert.equal(await client.blockTick(), 4);
         assert.equal((await client.lastValidBlock()).number, 4);
     });
 
@@ -171,7 +171,7 @@ contract('EthereumClient', async accounts => {
                 proofIndex: proof.proofIndex,
                 expectedValue: proof.receiptData,
             }
-            const response = await prover.verifyTrieProof(data);
+            const response = await mpt.verifyTrieProof(data);
             assert.equal(response, true);
           });
         });
@@ -180,7 +180,7 @@ contract('EthereumClient', async accounts => {
     it('verify receipt proof from chain', async () => {
         const txhash = '0x3baef8672605d65265accd178796cc460e5f9248c083cd2577d95c432f74f6e7';
         const proof = await getReceiptProof(getProof, prover, txhash);
-        const response = await prover.verifyTrieProof(proof);
+        const response = await mpt.verifyTrieProof(proof);
         assert.equal(response, true);
     });
 

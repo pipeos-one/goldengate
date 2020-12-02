@@ -1,7 +1,7 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "../EthereumDecoder.sol";
+import "../lib/EthereumDecoder.sol";
 
 contract LightClientMock {
     mapping(uint256 => bytes32) public blockHashes;
