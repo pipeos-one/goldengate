@@ -8,6 +8,9 @@ module.exports = {
   networks: {
     hardhat: {
     },
+    geth: {
+      url: "http://127.0.0.1:8645"
+    }
   },
   solidity: {
     version: "0.7.3",

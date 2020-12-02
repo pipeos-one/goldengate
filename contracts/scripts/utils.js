@@ -28,7 +28,7 @@ function getHeader(block) {
         coinbase: block.miner,
         extraData: block.extraData,
         gasUsed: block.gasUsed,
-        // totalDifficulty: block.totalDifficulty,
+        totalDifficulty: block.totalDifficulty,
         // size: block.size,
     }
     const header = ethblock.BlockHeader.fromHeaderData(headerData);
@@ -254,6 +254,11 @@ function getKeyFromProof(proof) {
     return getKeyFromProof(proof) + index.toString(16).padStart(2, '0');
 }
 
+function fullToMin(header) {
+    const {hash, parentHash, difficulty, number, gasLimit, gasUsed, timestamp, totalDifficulty} = header;
+    return {hash, parentHash, difficulty, number, gasLimit, gasUsed, timestamp, totalDifficulty};
+}
+
 module.exports = {
     buffer2hex,
     getHeader,
@@ -269,4 +274,5 @@ module.exports = {
     getAccountProof,
     getStorageProof,
     getKeyFromProof,
+    fullToMin,
 }
