@@ -73,6 +73,23 @@ contract('EthereumClient', async accounts => {
         assert.equal(buffer2hex(serialized), data);
     });
 
+    it('receipt logs RLP encoding/decoding', async () => {
+        let proof = proofs.receipt[0];
+        const log = await prover.toReceiptLog(proof.logEntry);
+        assert.equal(log.contractAddress, '0xdAC17F958D2ee523a2206206994597C13D831ec7');
+        assert.equal(log.data, '0x00000000000000000000000000000000000000000000000000000001a13b8600');
+        assert.sameMembers(log.topics, [
+            '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+            '0x0000000000000000000000006cc5f688a315f3dc28a7781717a9a798a59fda7b',
+            '0x0000000000000000000000007e7a32d9dc98c485c489be8e732f97b4ffe3a4cd',
+        ]);
+        assert.equal(await prover.getLog(log), proof.logEntry);
+
+        const receipt = await prover.toReceipt(proof.receiptData);
+        assert.equal(receipt.logs.length, 1);
+        assert.deepEqual(receipt.logs[0], log);
+    });
+
     it('client - adding blocks', async () => {
         // 19 blocks
         let header;
@@ -168,8 +185,19 @@ contract('EthereumClient', async accounts => {
                 proofIndex: proof.proofIndex,
                 expectedValue: proof.receiptData,
             }
-            const response = await prover.verifyTrieProof(data);
+            let response = await prover.verifyTrieProof(data);
             assert.equal(response, true);
+
+            response = await prover.verifyLog(block, data, proof.logEntry, 0);
+            assert.equal(response, true);
+
+            const log = await prover.toReceiptLog(proof.logEntry);
+            const changedEntry = await prover.getLog({
+                ...log,
+                contractAddress: '0x20A6284411E6A327F3b2eF5E5931745A239F6F97',
+            });
+            response = await prover.verifyLog(block, data, changedEntry, 0);
+            assert.equal(response, false);
           });
         });
     });

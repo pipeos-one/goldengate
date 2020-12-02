@@ -1,8 +1,6 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-// import "./lib/EthereumDecoder.sol";
-// import "./lib/MPT.sol";
 import "./interface/iLightClient.sol";
 import "./interface/iProver.sol";
 
@@ -29,27 +27,6 @@ contract Prover is iProver {
         bytes32 s
     ) public pure returns (bytes memory signedTransaction) {
 
-    }
-
-    function getTransactionHash(bytes memory signedTransaction) public pure returns (bytes32 hash) {
-        hash = keccak256(signedTransaction);
-    }
-
-    function getBlockRlpData(EthereumDecoder.BlockHeader memory header) public pure returns (bytes memory data) {
-        data = EthereumDecoder.getBlockRlpData(header);
-    }
-
-    function getBlockHash(EthereumDecoder.BlockHeader memory header) public pure returns (bytes32 hash) {
-        return keccak256(getBlockRlpData(header));
-    }
-
-    function getReceiptRlpData(EthereumDecoder.TransactionReceiptTrie memory receipt) public pure returns (bytes memory data) {
-        data = EthereumDecoder.getReceiptRlpData(receipt);
-    }
-
-    function toBlockHeader(bytes memory rlpHeader) public pure returns (EthereumDecoder.BlockHeader memory header)
-    {
-        header = EthereumDecoder.toBlockHeader(rlpHeader);
     }
 
     function lightClient() view public override returns (address _lightClient) {
@@ -87,13 +64,23 @@ contract Prover is iProver {
 
     }
 
-    function verifyLogs(
+    function verifyLog(
         EthereumDecoder.BlockHeader memory header,
-        MPT.MerkleProof memory receiptdata
+        MPT.MerkleProof memory receiptdata,
+        bytes memory logdata,
+        uint256 logIndex
     )
-        view public override returns (bool)
+        pure public override returns (bool isvalid)
     {
+        isvalid = receiptdata.verifyTrieProof();
+        if (!isvalid) return false;
 
+        EthereumDecoder.TransactionReceiptTrie memory receipt = EthereumDecoder.toReceipt(receiptdata.expectedValue);
+
+        if (keccak256(logdata) == keccak256(EthereumDecoder.getLog(receipt.logs[logIndex]))) {
+            return true;
+        }
+        return false;
     }
 
     function verifyTransactionAndStatus(
@@ -176,7 +163,6 @@ contract Prover is iProver {
         return true;
     }
 
-
     function forwardAndVerify(
         EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory accountdata,
@@ -221,5 +207,47 @@ contract Prover is iProver {
         require(_success == receipt.status, "Diverged transaction status");
 
         return data;
+    }
+
+    // Exposing encoder & decoder functions
+
+    function getTransactionHash(bytes memory signedTransaction) public pure returns (bytes32 hash) {
+        hash = keccak256(signedTransaction);
+    }
+
+    function getBlockHash(EthereumDecoder.BlockHeader memory header) public pure returns (bytes32 hash) {
+        return keccak256(getBlockRlpData(header));
+    }
+
+    function getBlockRlpData(EthereumDecoder.BlockHeader memory header) public pure returns (bytes memory data) {
+        return EthereumDecoder.getBlockRlpData(header);
+    }
+
+    function toBlockHeader(bytes memory data) public pure returns (EthereumDecoder.BlockHeader memory header) {
+        return EthereumDecoder.toBlockHeader(data);
+    }
+
+    function getLog(EthereumDecoder.Log memory log) public pure returns (bytes memory data) {
+        return EthereumDecoder.getLog(log);
+    }
+
+    function getReceiptRlpData(EthereumDecoder.TransactionReceiptTrie memory receipt) public pure returns (bytes memory data) {
+        return EthereumDecoder.getReceiptRlpData(receipt);
+    }
+
+    function toReceiptLog(bytes memory data) public pure returns (EthereumDecoder.Log memory log) {
+        return EthereumDecoder.toReceiptLog(data);
+    }
+
+    function toReceipt(bytes memory data) public pure returns (EthereumDecoder.TransactionReceiptTrie memory receipt) {
+        return EthereumDecoder.toReceipt(data);
+    }
+
+    function toTransaction(bytes memory data) public pure returns (EthereumDecoder.Transaction memory transaction) {
+        return EthereumDecoder.toTransaction(data);
+    }
+
+    function toAccount(bytes memory data) public pure returns (EthereumDecoder.Account memory account) {
+        return EthereumDecoder.toAccount(data);
     }
 }

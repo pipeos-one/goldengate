@@ -24,9 +24,11 @@ interface iProver {
         MPT.MerkleProof memory accountdata
     ) view external returns (bool);
 
-    function verifyLogs(
+    function verifyLog(
         EthereumDecoder.BlockHeader memory header,
-        MPT.MerkleProof memory receiptdata
+        MPT.MerkleProof memory receiptdata,
+        bytes memory logdata,
+        uint256 logIndex
     ) view external returns (bool);
 
     function verifyTransactionAndStatus(

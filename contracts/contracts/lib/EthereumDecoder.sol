@@ -144,7 +144,7 @@ library EthereumDecoder {
 
         list[0] = RLPEncode.encodeAddress(log.contractAddress);
         list[1] = RLPEncode.encodeList(topics);
-        list[0] = RLPEncode.encodeBytes(log.data);
+        list[2] = RLPEncode.encodeBytes(log.data);
         data = RLPEncode.encodeList(list);
     }
 
@@ -168,15 +168,14 @@ library EthereumDecoder {
 
         uint idx;
         while(it.hasNext()) {
-            if ( idx == 0 )      log.contractAddress       = it.next().toAddress();
+            if ( idx == 0 ) {
+                log.contractAddress = it.next().toAddress();
+            }
             else if ( idx == 1 ) {
                 RLPDecode.RLPItem[] memory list = it.next().toList();
+                log.topics = new bytes32[](list.length);
                 for (uint256 i = 0; i < list.length; i++) {
-                    bytes memory _topic = list[i].toBytes();
-                    bytes32 topic;
-                    assembly {
-                        mstore(topic, mload(add(_topic, 32)))
-                    }
+                    bytes32 topic = bytes32(list[i].toUint());
                     log.topics[i] = topic;
                 }
             }
@@ -191,14 +190,15 @@ library EthereumDecoder {
 
         uint idx;
         while(it.hasNext()) {
-            if ( idx == 0 )      receipt.status       = uint8(it.next().toUint());
-            else if ( idx == 1 ) receipt.gasUsed       = it.next().toUint();
-            else if ( idx == 3 ) receipt.logsBloom        = it.next().toBytes();
-            else if ( idx == 4 ) {
-                // RLPDecode.RLPItem[] memory list = it.next().toList();
-                // for (uint256 i = 0; i < list.length; i++) {
-                //     receipt.logs[i] = toReceiptLog(list[i].toBytes());
-                // }
+            if ( idx == 0 ) receipt.status = uint8(it.next().toUint());
+            else if ( idx == 1 ) receipt.gasUsed = it.next().toUint();
+            else if ( idx == 2 ) receipt.logsBloom = it.next().toBytes();
+            else if ( idx == 3 ) {
+                RLPDecode.RLPItem[] memory list = it.next().toList();
+                receipt.logs = new Log[](list.length);
+                for (uint256 i = 0; i < list.length; i++) {
+                    receipt.logs[i] = toReceiptLog(list[i].toRlpBytes());
+                }
             }
             else it.next();
             idx++;
