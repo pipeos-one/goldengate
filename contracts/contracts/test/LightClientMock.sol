@@ -6,7 +6,7 @@ import "../lib/EthereumDecoder.sol";
 contract LightClientMock {
     mapping(uint256 => bytes32) public blockHashes;
 
-    function getValidBlockHash(uint256 number) view public returns (bytes32 hash) {
+    function getConfirmedBlockHash(uint256 number) view public returns (bytes32 hash) {
         return blockHashes[number];
     }
 

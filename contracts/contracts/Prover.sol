@@ -1,22 +1,20 @@
 pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
-import "./lib/EthereumDecoder.sol";
-import "./lib/MPT.sol";
+// import "./lib/EthereumDecoder.sol";
+// import "./lib/MPT.sol";
+import "./interface/iLightClient.sol";
+import "./interface/iProver.sol";
 
-interface EthereumClient {
-    function getValidBlockHash(uint256 height) view external returns (bytes32 hash);
-}
-
-contract Prover {
+contract Prover is iProver {
     using MPT for MPT.MerkleProof;
 
-    EthereumClient public client;
+    iLightClient public client;
 
     mapping(address => uint256) accountNonces;
 
     constructor(address bridgeClient) {
-        client = EthereumClient(bridgeClient);
+        client = iLightClient(bridgeClient);
     }
 
     function getSignedTransaction(
@@ -54,6 +52,131 @@ contract Prover {
         header = EthereumDecoder.toBlockHeader(rlpHeader);
     }
 
+    function lightClient() view public override returns (address _lightClient) {
+        return address(client);
+    }
+
+    function verifyTrieProof(MPT.MerkleProof memory data) pure public override returns (bool) {
+        return data.verifyTrieProof();
+    }
+
+    function verifyTransaction(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory txdata
+    )
+        view public override returns (bool)
+    {
+
+    }
+
+    function verifyReceipt(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory receiptdata
+    )
+        view public override returns (bool)
+    {
+
+    }
+
+    function verifyAccount(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory accountdata
+    )
+        view public override returns (bool)
+    {
+
+    }
+
+    function verifyLogs(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory receiptdata
+    )
+        view public override returns (bool)
+    {
+
+    }
+
+    function verifyTransactionAndStatus(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory receiptdata
+    )
+        view public override returns (bool)
+    {
+
+    }
+
+    function verifyCode(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory accountdata
+    )
+        view public override returns (bool)
+    {
+
+    }
+
+    function verifyBalance(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory txdata,
+        MPT.MerkleProof memory receiptdata,
+        uint256 value
+    ) view public override returns (bool)
+    {
+        EthereumDecoder.Transaction memory transaction = EthereumDecoder.toTransaction(txdata.expectedValue);
+        EthereumDecoder.TransactionReceiptTrie memory receipt = EthereumDecoder.toReceipt(receiptdata.expectedValue);
+
+        // Check block hash is hash(rlp(blockData))
+        bytes32 blockHash = getBlockHash(header);
+        require(blockHash == header.hash, "Header data or hash invalid");
+
+        // Check block hash was registered in light client
+        bytes32 blockHashClient = client.getConfirmedBlockHash(header.number);
+        require(blockHashClient > 0, "Unregistered block hash");
+
+        // decode receipt status and check it is true
+        require(receipt.status == 1, "Transaction receipt status failed");
+
+        // TODO: check sender sent transaction
+        require(transaction.value == value, "Wrong transaction value");
+
+        // TODO meld two verification - they share indexes and header data
+        // TODO check storage proofs -> storageHash
+
+        // Check proofs are valid
+        require(txdata.verifyTrieProof());
+        require(receiptdata.verifyTrieProof());
+        return true;
+    }
+
+    function verifyStorage(
+        EthereumDecoder.BlockHeader memory header,
+        MPT.MerkleProof memory accountProof,
+        MPT.MerkleProof memory storageProof
+    ) view public override returns (bool)
+    {
+        EthereumDecoder.Account memory account = EthereumDecoder.toAccount(accountProof.expectedValue);
+
+        // Check block hash is hash(rlp(blockData))
+        bytes32 blockHash = getBlockHash(header);
+        // require(blockHash == header.hash, "Header data or hash invalid");
+
+        // Check block hash was registered in light client
+        bytes32 blockHashClient = client.getConfirmedBlockHash(header.number);
+        require(blockHashClient > 0, "Unregistered block hash");
+
+        // Check storage root is part of the account
+        require(storageProof.expectedRoot == account.storageRoot, "Account storageRoot or storage proof invalid. ");
+
+        // check account root
+        // TODO meld two verification - they share indexes and header data
+
+        // Check proofs are valid
+        require(accountProof.verifyTrieProof());
+        require(storageProof.verifyTrieProof());
+
+        return true;
+    }
+
+
     function forwardAndVerify(
         EthereumDecoder.BlockHeader memory header,
         MPT.MerkleProof memory accountdata,
@@ -72,7 +195,7 @@ contract Prover {
         require(blockHash == header.hash, "Header data or hash invalid");
 
         // Check block hash was registered in light client
-        bytes32 blockHashClient = client.getValidBlockHash(header.number);
+        bytes32 blockHashClient = client.getConfirmedBlockHash(header.number);
         require(blockHashClient > 0, "Unregistered block hash");
 
         // check tx & receipt have same key
@@ -98,67 +221,5 @@ contract Prover {
         require(_success == receipt.status, "Diverged transaction status");
 
         return data;
-    }
-
-    function verifyStorage(
-        EthereumDecoder.BlockHeader memory header,
-        MPT.MerkleProof memory accountProof,
-        MPT.MerkleProof memory storageProof
-    ) view public returns (bool)
-    {
-        EthereumDecoder.Account memory account = EthereumDecoder.toAccount(accountProof.expectedValue);
-
-        // Check block hash is hash(rlp(blockData))
-        bytes32 blockHash = getBlockHash(header);
-        // require(blockHash == header.hash, "Header data or hash invalid");
-
-        // Check block hash was registered in light client
-        bytes32 blockHashClient = client.getValidBlockHash(header.number);
-        require(blockHashClient > 0, "Unregistered block hash");
-
-        // Check storage root is part of the account
-        require(storageProof.expectedRoot == account.storageRoot, "Account storageRoot or storage proof invalid. ");
-
-        // check account root
-        // TODO meld two verification - they share indexes and header data
-
-        // Check proofs are valid
-        require(accountProof.verifyTrieProof());
-        require(storageProof.verifyTrieProof());
-
-        return true;
-    }
-
-    function verifyBalance(
-        EthereumDecoder.BlockHeader memory header,
-        MPT.MerkleProof memory txdata,
-        MPT.MerkleProof memory receiptdata,
-        uint256 value
-    ) view public returns (bool)
-    {
-        EthereumDecoder.Transaction memory transaction = EthereumDecoder.toTransaction(txdata.expectedValue);
-        EthereumDecoder.TransactionReceiptTrie memory receipt = EthereumDecoder.toReceipt(receiptdata.expectedValue);
-
-        // Check block hash is hash(rlp(blockData))
-        bytes32 blockHash = getBlockHash(header);
-        require(blockHash == header.hash, "Header data or hash invalid");
-
-        // Check block hash was registered in light client
-        bytes32 blockHashClient = client.getValidBlockHash(header.number);
-        require(blockHashClient > 0, "Unregistered block hash");
-
-        // decode receipt status and check it is true
-        require(receipt.status == 1, "Transaction receipt status failed");
-
-        // TODO: check sender sent transaction
-        require(transaction.value == value, "Wrong transaction value");
-
-        // TODO meld two verification - they share indexes and header data
-        // TODO check storage proofs -> storageHash
-
-        // Check proofs are valid
-        require(txdata.verifyTrieProof());
-        require(receiptdata.verifyTrieProof());
-        return true;
     }
 }

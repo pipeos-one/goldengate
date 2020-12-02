@@ -5,7 +5,7 @@ import "../lib/EthereumDecoder.sol";
 import "../lib/MPT.sol";
 
 interface iProver {
-    function lightClient () view external returns (address _lightClient);
+    function lightClient() view external returns (address _lightClient);
 
     function verifyTrieProof(MPT.MerkleProof memory data) pure external returns (bool);
 
