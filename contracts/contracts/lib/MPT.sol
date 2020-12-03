@@ -3,6 +3,12 @@ pragma experimental ABIEncoderV2;
 
 import "../external_lib/RLPDecode.sol";
 
+/*
+    Documentation:
+    - https://eth.wiki/en/fundamentals/patricia-tree
+    - https://github.com/blockchainsllc/in3/wiki/Ethereum-Verification-and-MerkleProof
+    - https://easythereentropy.wordpress.com/2014/06/04/understanding-the-ethereum-trie/
+*/
 library MPT {
     using RLPDecode for RLPDecode.RLPItem;
     using RLPDecode for RLPDecode.Iterator;
@@ -91,6 +97,7 @@ library MPT {
         }
 
         if (prefix == 2) {
+            // leaf even
             uint256 length = nodekey.length - 1;
             bytes memory actualKey = sliceTransform(nodekey, 33, length, false);
             bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, length, false);
@@ -100,6 +107,7 @@ library MPT {
             }
         }
         else if (prefix == 3) {
+            // leaf odd
             bytes memory actualKey = sliceTransform(nodekey, 32, nodekey.length, true);
             bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, data.key.length - data.keyIndex, false);
             if (keccak256(data.expectedValue) == keccak256(nodevalue)) {
@@ -108,6 +116,7 @@ library MPT {
             }
         }
         else if (prefix == 0) {
+            // extension even
             uint256 extensionLength = nodekey.length - 1;
             bytes memory shared_nibbles = sliceTransform(nodekey, 33, extensionLength, false);
             bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, extensionLength, false);
@@ -123,6 +132,7 @@ library MPT {
             }
         }
         else if (prefix == 1) {
+            // extension odd
             uint256 extensionLength = nodekey.length;
             bytes memory shared_nibbles = sliceTransform(nodekey, 32, extensionLength, true);
             bytes memory restKey = sliceTransform(data.key, 32 + data.keyIndex, extensionLength, false);

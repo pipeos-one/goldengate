@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "./interface/iLightClient.sol";
 import "./interface/iProver.sol";
+import "./lib/ECVerify.sol";
 
 contract Prover is iProver {
     using MPT for MPT.MerkleProof;
@@ -114,7 +115,8 @@ contract Prover is iProver {
     function verifyStorage(
         MPT.MerkleProof memory accountProof,
         MPT.MerkleProof memory storageProof
-    ) pure public override returns (bool valid, string memory reason)
+    )
+        pure public override returns (bool valid, string memory reason)
     {
         EthereumDecoder.Account memory account = EthereumDecoder.toAccount(accountProof.expectedValue);
 
@@ -124,6 +126,19 @@ contract Prover is iProver {
         if (!valid) return (false, "verifyStorage - invalid proof");
 
         return (true, "");
+    }
+
+    function getTransactionSender(
+        MPT.MerkleProof memory txdata,
+        uint256 chainId
+    )
+        pure public returns (address sender)
+    {
+        EthereumDecoder.Transaction memory transaction = EthereumDecoder.toTransaction(txdata.expectedValue);
+        bytes memory txraw = EthereumDecoder.getTransactionRaw(transaction, chainId);
+
+        bytes32 message_hash = keccak256(txraw);
+        sender = ECVerify.ecverify(message_hash, transaction.v, transaction.r, transaction.s);
     }
 
     // Exposing encoder & decoder functions

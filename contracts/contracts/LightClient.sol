@@ -24,10 +24,7 @@ contract LightClient is iLightClient {
         uint256 totalDifficulty;
     }
 
-    // event BlockAdded(uint256 indexed number, bytes32 indexed hash);
-    // event FinalBlockChanged(uint256 indexed number, bytes32 indexed hash);
-
-    constructor(uint256 _minBatchCount, uint256 _maxBatchCount, uint256 _confirmationDelay, BlockHeaderMin memory _lastConfirmedHeader) public {
+    constructor(uint256 _minBatchCount, uint256 _maxBatchCount, uint256 _confirmationDelay, BlockHeaderMin memory _lastConfirmedHeader) {
         minBatchCount = _minBatchCount;
         maxBatchCount = _maxBatchCount;
         confirmationDelay = _confirmationDelay;
@@ -83,8 +80,6 @@ contract LightClient is iLightClient {
         tick();
     }
 
-    // No batch of blocks is marked valid until confirmationDelay passes
-    // They are kept in temporary storage and compared with other proposals
     function addBlocks(EthereumDecoder.BlockHeader[] memory headers) public override {
         require(headers.length >= minBatchCount && headers.length <= maxBatchCount, "Invalid number of blocks");
 

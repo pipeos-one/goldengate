@@ -12,11 +12,11 @@ library EthereumDecoder {
     struct BlockHeader {
         bytes32 hash;
         bytes32 parentHash;
-        bytes32 sha3Uncles;  // sha3Uncles ; ommersHash
+        bytes32 sha3Uncles;  // ommersHash
         address miner;       // beneficiary
         bytes32 stateRoot;
         bytes32 transactionsRoot;
-        bytes32 receiptsRoot;  // root hash of transaction receipts trie
+        bytes32 receiptsRoot;
         bytes logsBloom;
         uint256 difficulty;
         uint256 number;
@@ -203,6 +203,21 @@ library EthereumDecoder {
             else it.next();
             idx++;
         }
+    }
+
+    function getTransactionRaw(Transaction memory transaction, uint256 chainId) internal pure returns (bytes memory data) {
+        bytes[] memory list = new bytes[](9);
+
+        list[0] = RLPEncode.encodeUint(transaction.nonce);
+        list[1] = RLPEncode.encodeUint(transaction.gasPrice);
+        list[2] = RLPEncode.encodeUint(transaction.gasLimit);
+        list[3] = RLPEncode.encodeAddress(transaction.to);
+        list[4] = RLPEncode.encodeUint(transaction.value);
+        list[5] = RLPEncode.encodeBytes(transaction.data);
+        list[6] = RLPEncode.encodeUint(chainId);
+        list[7] = RLPEncode.encodeUint(0);
+        list[8] = RLPEncode.encodeUint(0);
+        data = RLPEncode.encodeList(list);
     }
 
     function toTransaction(bytes memory data) internal pure returns (Transaction memory transaction) {

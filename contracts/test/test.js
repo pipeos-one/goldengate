@@ -265,12 +265,18 @@ contract('EthereumClient', async accounts => {
         assert.equal(response.valid, true, response.reason);
     });
 
+    it('prover - getTransactionSender', async () => {
+        const recovered = await proverStateSync.getTransactionSender(proofs.tx.proof, proofs.tx.chainId);
+        assert.equal(recovered, proofs.tx.address);
+    });
+
     it.skip('verify Counter same chain (mimic two chains) --network geth', async () => {
         let receipt;
         const _getProof = new GetProof("http://127.0.0.1:8645");
         const address = accounts[2];
         const countertest = await CounterTest.new(proverStateSync.address);
         await web3.eth.personal.unlockAccount(address, "0", 60000);
+        const chainId = await web3.eth.getChainId();
 
         let counterA = (await countertest.count()).toNumber();
         let counterB = (await countertest.count2()).toNumber();
@@ -283,6 +289,8 @@ contract('EthereumClient', async accounts => {
         const accountProof = await getAccountProof(web3, _getProof, proverStateSync, address, receipt.receipt.blockHash);
         const txProof = await getTransactionProof(_getProof, proverStateSync, receipt.receipt.transactionHash);
         const receiptProof = await getReceiptProof(_getProof, proverStateSync, receipt.receipt.transactionHash);
+
+        assert.equal(await proverStateSync.getTransactionSender(txProof, chainId), address);
 
         // Forward transaction on Chain B
         await clientmock._addBlock(header);
