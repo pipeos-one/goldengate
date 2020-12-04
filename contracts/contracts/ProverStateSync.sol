@@ -13,7 +13,7 @@ contract ProverStateSync is Prover {
         MPT.MerkleProof memory accountdata,
         MPT.MerkleProof memory txdata,
         MPT.MerkleProof memory receiptdata,
-        address sender  // TODO computed from signed transaction data
+        uint256 chainId
     )
         public returns (bytes memory)
     {
@@ -27,8 +27,6 @@ contract ProverStateSync is Prover {
         // check tx & receipt have same key
         require(keccak256(txdata.key) == keccak256(receiptdata.key), "Transaction & receipt index must be the same.");
 
-        // TODO Check receipt.from ecverified from signed transaction
-
         // Check proofs are valid
         (valid, reason) = verifyTransaction(header, txdata);
         if (!valid) revert(reason);
@@ -38,6 +36,8 @@ contract ProverStateSync is Prover {
 
         (valid, reason) = verifyAccount(header, accountdata);
         if (!valid) revert(reason);
+
+        address sender = getTransactionSender(txdata, chainId);
 
         // Account nonce must be kept in sync to ensure data is the same
         // First time use just records the nonce, so it is never replayed

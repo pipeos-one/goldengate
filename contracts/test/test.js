@@ -294,7 +294,7 @@ contract('EthereumClient', async accounts => {
 
         // Forward transaction on Chain B
         await clientmock._addBlock(header);
-        receipt = await proverStateSync.forwardAndVerify(header, accountProof, txProof, receiptProof, address);
+        receipt = await proverStateSync.forwardAndVerify(header, accountProof, txProof, receiptProof, chainId);
 
         counterB += 3;
         assert.equal(counterB, (await countertest.count2()).toNumber());
