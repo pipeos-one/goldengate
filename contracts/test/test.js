@@ -2,8 +2,10 @@ const EthereumClient = artifacts.require('LightClient.sol');
 const Prover = artifacts.require('Prover.sol');
 const Counter = artifacts.require('Counter.sol');
 const CounterTest = artifacts.require('CounterTest.sol');
+const CounterTestCorrelated = artifacts.require('CounterTestCorrelated.sol');
 const LightClientMock = artifacts.require('LightClientMock.sol');
 const ProverStateSync = artifacts.require('ProverStateSync.sol');
+const ProverCorrelated = artifacts.require('ProverCorrelated.sol');
 const rlp = require('rlp');
 const { GetProof } = require('eth-proof');
 const proofs = require('./data');
@@ -298,6 +300,55 @@ contract('EthereumClient', async accounts => {
 
         counterB += 3;
         assert.equal(counterB, (await countertest.count2()).toNumber());
+    });
+
+    it.skip('verify correlated actions - Counter same chain (mimic two chains) --network geth', async () => {
+        let receipt;
+        const _getProof = new GetProof("http://127.0.0.1:8645");
+        const address = accounts[2];
+
+        const prover1 = await ProverCorrelated.new(clientmock.address);
+        const prover2 = await ProverCorrelated.new(clientmock.address);
+        await prover1.registerProver(prover2.address);
+        await prover2.registerProver(prover1.address);
+        const countertest1 = await CounterTestCorrelated.new(prover1.address);
+        const countertest2 = await CounterTestCorrelated.new(prover2.address);
+
+        await web3.eth.personal.unlockAccount(address, "0", 60000);
+
+        let counterA = (await countertest1.count()).toNumber();
+        let counterB = (await countertest2.count()).toNumber();
+        const incr = countertest1.abi.find(it => it.name === 'incrementCounter');
+        const decr = countertest1.abi.find(it => it.name === 'decrementCounter');
+
+        // Register correlated actions
+        await prover1.addAction({to: countertest1.address, sig: incr.signature}, {to: countertest2.address, sig: decr.signature});
+
+        // Send transaction on Chain A
+        receipt = await prover1.initiate(countertest1.address, incr.signature, '0x0000000000000000000000000000000000000000000000000000000000000002');
+        counterA += 2;
+        assert.equal((await countertest1.count()).toNumber(), counterA);
+
+        // Get proofs
+        const header = await web3.eth.getBlock(receipt.receipt.blockNumber);
+        const receiptProof = await getReceiptProof(_getProof, prover1, receipt.receipt.transactionHash);
+
+        const decoded = await prover1.toReceipt(receiptProof.expectedValue);
+        const logdata = await prover1.getLog(decoded.logs[1]);
+
+        // Forward transaction on Chain B
+        await clientmock._addBlock(header);
+        receipt = await prover2.correlate(
+            header,
+            receiptProof,
+            logdata,
+            1,
+            countertest2.address,
+            decr.signature, '0x0000000000000000000000000000000000000000000000000000000000000002',
+        );
+
+        counterB -= 2;
+        assert.equal(counterB, (await countertest2.count()).toNumber());
     });
 });
 
