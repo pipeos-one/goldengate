@@ -47,7 +47,17 @@ contract ProverStateSync is Prover {
         // Increase nonce regardless of the transaction status (success/fail)
         accountNonces[sender] = account.nonce;
 
-        (bool success, bytes memory data) = transaction.to.call{value: transaction.value, gas: transaction.gasLimit}(transaction.data);
+        bytes32 codeHash;
+        address target = transaction.to;
+        assembly {
+            codeHash := extcodehash(target)
+        }
+        require(account.codeHash == codeHash, "Different codeHash");
+
+        (bool success, bytes memory data) = transaction.to.call{
+            value: transaction.value,
+            gas: transaction.gasLimit
+        }(transaction.data);
         uint8 _success = success ? uint8(1) : uint8(0);
         require(_success == receipt.status, "Diverged transaction status");
 

@@ -9,6 +9,8 @@ const ProverCorrelated = artifacts.require('ProverCorrelated.sol');
 const rlp = require('rlp');
 const { GetProof } = require('eth-proof');
 const proofs = require('./data');
+const MPT = require('merkle-patricia-tree');
+const Trie = MPT.BaseTrie;
 const {
     buffer2hex,
     expandkey,
@@ -21,6 +23,7 @@ const {
     getAccountProof,
     getTransactionProof,
 } = require('../scripts/utils');
+const { BlockHeader } = require('@ethereumjs/block');
 
 const getProof = new GetProof("https://ropsten.infura.io/v3/" + process.env.INFURA_TOKEN);
 
@@ -37,6 +40,82 @@ contract('EthereumClient', async accounts => {
         prover = await Prover.new(clientmock.address);
         proverStateSync = await ProverStateSync.new(clientmock.address);
     });
+
+    it.only('verify js', async () => {
+        // const hash = proofs.tx.proof.expectedRoot;
+        // const key = proofs.tx.proof.key;
+        // const proof = proofs.tx.proof.proof;
+
+        const profff = proofs.receipt[1];
+        const header = BlockHeader.fromRLPSerializedHeader(profff.headerData);
+        const hash = '0x' + header.receiptTrie.toString('hex');
+        const key = '0x01';
+        const proof = profff.proof.map(p => '0x' + rlp.encode(p).toString('hex'));
+
+        console.log('--hash', hash);
+        console.log('--key', key, expandkey(key));
+        console.log('--proof', proof);
+
+        // function hex2buff (hex) {
+        //     let nibbles = hex.slice(2).split('').reverse();
+        //     if (nibbles.length %2 === 1) nibbles.push('0');
+        //     let arr = [];
+        //     for (let i = 0; i < nibbles.length-1; i++) {
+        //         arr.push(parseInt(nibbles[i] + nibbles[i+1], 16));
+        //     }
+        //     return new Uint8Array(arr.reverse());
+        // }
+
+        const hashbuff = Buffer.from(hash.slice(2), 'hex');
+        const keybuff = Buffer.from(key.slice(2), 'hex');
+        // '0x' + expandkey(key)
+
+        // const pp = proof.map(value => rlp.decode(value));
+        const pp = proof.map(value => {
+            // return web3.utils.hexToBytes(value);
+            console.log('--value', value);
+            return Buffer.from(value.slice(2), 'hex');
+        });
+
+        console.log('--hashbuff', hashbuff);
+        console.log('--keybuff', keybuff);
+        console.log('--pp', pp);
+
+        const tri = await Trie.fromProof(pp);
+
+
+        console.log('---', tri);
+
+        console.log('---root', tri.root);
+
+        // const trie = new Trie()
+
+        // await trie.put(Buffer.from('test'), Buffer.from('one'))
+        // console.log('trie', trie);
+        // const prooff = await Trie.createProof(trie, Buffer.from('test'))
+        // console.log('prooff', prooff);
+        // const value = await Trie.verifyProof(trie.root, Buffer.from('test'), prooff)
+        // console.log('value', value);
+        // console.log(value.toString()) // 'one'
+
+
+
+
+        console.log('----2--', await tri.get(keybuff));
+
+        console.log('-------', tri.EMPTY_TRIE_ROOT);
+
+        console.log('---eeeeee----', tri.root.equals(tri.EMPTY_TRIE_ROOT));
+
+        let valid;
+        try {
+            valid = await Trie.verifyProof(hashbuff, keybuff, pp);
+        } catch(e) {
+            console.log('-----error--', e);
+        }
+        console.log('--valid', valid);
+        console.log(valid.toString('hex'))
+    })
 
     it('block hash', async () => {
         const block = await web3.eth.getBlock(blockNumber);
@@ -272,7 +351,7 @@ contract('EthereumClient', async accounts => {
         assert.equal(recovered, proofs.tx.address);
     });
 
-    it.skip('verify Counter same chain (mimic two chains) --network geth', async () => {
+    it('verify Counter same chain (mimic two chains) --network geth', async () => {
         let receipt;
         const _getProof = new GetProof("http://127.0.0.1:8645");
         const address = accounts[2];
@@ -291,8 +370,11 @@ contract('EthereumClient', async accounts => {
         const accountProof = await getAccountProof(web3, _getProof, proverStateSync, address, receipt.receipt.blockHash);
         const txProof = await getTransactionProof(_getProof, proverStateSync, receipt.receipt.transactionHash);
         const receiptProof = await getReceiptProof(_getProof, proverStateSync, receipt.receipt.transactionHash);
+        const accountHash =
 
         assert.equal(await proverStateSync.getTransactionSender(txProof, chainId), address);
+
+        assert.equal(accountProof.expectedValue , await countertest.getCodeHash());
 
         // Forward transaction on Chain B
         await clientmock._addBlock(header);

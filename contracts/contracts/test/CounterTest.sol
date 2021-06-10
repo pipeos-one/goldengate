@@ -48,4 +48,11 @@ contract CounterTest {
             emit LogChange(abi.encodePacked("Counter is reset!"));
         }
     }
+
+    function getCodeHash() view public returns(bytes32 codeHash) {
+        address target = address(this);
+        assembly {
+            codeHash := extcodehash(target)
+        }
+    }
 }
