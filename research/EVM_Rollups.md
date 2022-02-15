@@ -19,7 +19,7 @@ any EVM-based system can have rollups almost "for free" (as implementation effor
 - plasma-like execution chains
 - data sharding
 
-all into a sigle implementation solution.
+all into a single implemented solution.
 
 An EVM-based chain with PoS (like Evmos https://github.com/tharsis/evmos) could be a settlement chain for spawned rollup-like chains based on Evmos (without the consensus layer, e.g. with a sequencer-like system). Data verification & availability is done on IPFS/IPLD (which have the awesome feature that you can republish data under the same CID at any time).
 
