@@ -1,13 +1,25 @@
 # EVM Rollups
 
 By implementing the following precompiles:
+
 - introspection (demo: https://youtu.be/cR4tUl0Kzq8, https://github.com/loredanacirstea/go-ethereum/tree/precompiles-test)
 - Merkle Proofs (demo: https://youtu.be/VVNXztcXXFo, https://github.com/loredanacirstea/go-ethereum/tree/precompiles-merkle-proofs)
 - IPFS (demo: https://youtu.be/Yaf3uLNWDwg, https://github.com/loredanacirstea/go-ethereum/tree/precompile-ipfs2)
 - IPLD (demo: https://youtu.be/8M8Q5iO1cZ8, https://github.com/loredanacirstea/go-ethereum/tree/precompiles-ipld2)
 - IBC (Cosmos' InterBlockchain Communication)
 
-any EVM-based system can have rollups almost "for free" (as implementation effort). 
+and behavior from:
+
+- dTypeDB
+- EVM Interpreter in EVM (demo https://youtu.be/gjxz1jzyQQM)
+
+any EVM-based system can have rollups almost "for free" (as implementation effort). Plus it may combine the scaling economies of:
+
+- rollups
+- plasma-like execution chains
+- data sharding
+
+all into a sigle implementation solution.
 
 An EVM-based chain with PoS (like Evmos https://github.com/tharsis/evmos) could be a settlement chain for spawned rollup-like chains based on Evmos (without the consensus layer, e.g. with a sequencer-like system). Data verification & availability is done on IPFS/IPLD (which have the awesome feature that you can republish data under the same CID at any time).
 
