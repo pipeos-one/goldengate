@@ -1,5 +1,7 @@
 # EVM Rollups
 
+![Diagram1](./EVM_Rollups_diag1.png)
+
 ```
 
 [Evmos Chain] -> Introspection [Evmos Chain]
