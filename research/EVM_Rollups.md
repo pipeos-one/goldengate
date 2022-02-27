@@ -75,3 +75,14 @@ Other data-availability layers can be supported, but it is not a neccessity.
 
 
 ```
+
+## Computing Efficiency
+
+Instead of having general (unspecialiased) subchains, we should prefer dedicated decentralized services for:
+
+- file storage: IPFS
+- data storage: IPLD
+- data indexing, data search: any good distributed and decentralized database. Maybe YugaByte.
+- Read/Write speed: Redis or in-memory DB
+- compute: Golem? any other decentralized CPU/GPU farm?
+- communication, networking: Ark app, p2plib, WebRTC
