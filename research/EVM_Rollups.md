@@ -85,4 +85,7 @@ Instead of having general (unspecialiased) subchains, we should prefer dedicated
 - data indexing, data search: any good distributed and decentralized database. Maybe YugaByte.
 - Read/Write speed: Redis or in-memory DB
 - compute: Golem? any other decentralized CPU/GPU farm?
+	- Taylor in Python, CBOR-encode/decode
+		- dKeras
+		- Ray
 - communication, networking: Ark app, p2plib, WebRTC
