@@ -15,3 +15,7 @@ Such enforcing has to follow:
 
 - controlled creation of contracts (eventually synchoronized creation)
 - controlled nonce and order of synchronized transactions
+
+## ACL Contracts
+
+- for ensuring required balance / eventual slashing
