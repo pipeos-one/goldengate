@@ -19,3 +19,8 @@ Such enforcing has to follow:
 ## ACL Contracts
 
 - for ensuring required balance / eventual slashing
+
+## Proxy Contracts
+
+- redirect transactions to the contracts where they need to execute
+- maintain nonce sync
