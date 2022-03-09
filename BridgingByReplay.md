@@ -6,7 +6,12 @@ If the chain does not benefit from IBC, it needs a light client of each of the b
 
 ## IBC
 
-For EVM, an IBC precompile can play the role of a light client.
+For EVM, an IBC precompile can play the role of a light client. Build order (on each chain):
+
+- Singleton Factory
+- Singleton Proxy with IBC semaphores
+- Singleton ACL
+- other singleton contracts (to be remotely played)
 
 ## Singleton Contracts
 
