@@ -29,3 +29,8 @@ Such enforcing has to follow:
 
 - redirect transactions to the contracts where they need to execute
 - maintain nonce sync
+
+## ERC20, EIP721, Asset minting contracts
+
+These contracts are not compatible directly with replay bridging, but they can become compatible by adapter contracts (that forward transactions).
+Also replay-compatible protocols that correspond to these standards should be standardized (for gas saving).
