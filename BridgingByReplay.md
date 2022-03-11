@@ -28,7 +28,12 @@ Such enforcing has to follow:
 ## Proxy Contracts
 
 - redirect transactions to the contracts where they need to execute
-- maintain nonce sync
+- maintain nonce sync or
+- maintain state hash conform with "Abstracted Blockchains" theory
+
+## IBC Precompile
+
+- maintains one version of the state hash conform with "Abstracted Blockchains" theory
 
 ## ERC20, EIP721, Asset minting contracts
 
