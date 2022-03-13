@@ -88,7 +88,7 @@ function transferOn(uint chain_ID, address _to, uint256 _value) private returns 
       chainID := chainid()
   }
   if (chainID == chain_ID) {
-    return _transefer(address _to, uint256 _value);
+    return _transfer(address _to, uint256 _value);
   }
   return 1;
 }
