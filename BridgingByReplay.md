@@ -94,3 +94,12 @@ function transferOn(uint chain_ID, address _to, uint256 _value) private returns 
 }
   
 ```
+  
+In addition, we add a new function:
+```
+function transferTo(uint chain_ID, address _to, uint256 _value) private returns (bool success){
+  _transfer( 0x0, _value);
+  BridgeProxy.forePlay(encode(this.mintOn(chain_ID, _value)));
+  return 1;
+}
+```
