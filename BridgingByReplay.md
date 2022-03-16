@@ -6,6 +6,10 @@ https://youtu.be/ayFzY4btFX4
 
 ## Usecases
 
+This bridge has the same usecases as the additional eth2 tech brings to eth1:
+
+A set of EVM chains that use this bridge will become like a thick beacon chain (with behavior and data instead of the lean eth2 beacon), and the finality of tendermint may very well be faster than the one eth2 may adopt (they do not guarantee the "per block" finality yet and we do not know the period of block production).
+
 - data shards - leave only the most used data on the main chain
 - spawn rollups and sidechains with the same guarantees of compatibility and security as IBC, with their root state synchronized with the main chain
     - move data on a sidechain for high-throughput (think IoT or mass voting) and sync only the final data snapshot with the main chain
