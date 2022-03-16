@@ -1,5 +1,22 @@
 # Golden Gate Bridging by Replay
 
+## Demos
+
+https://youtu.be/ayFzY4btFX4
+
+## Usecases
+
+- data shards - leave only the most used data on the main chain
+- spawn rollups and sidechains with the same guarantees of compatibility and security as IBC, with their root state synchronized with the main chain
+    - move data on a sidechain for high-throughput (think IoT or mass voting) and sync only the final data snapshot with the main chain
+    - move rarely-used data on a sidechain and move it back on the main when you decide to use it more often
+- all asset and token bridging that asset bridges can do with guarantees of asset unicity and integrity
+    - with additional standardization, the replay mechanism can act as a correlated-action mechanism (e.g. lock-mint for tokens)
+- this can be the backbone tech for data mirroring across chains (important data)
+    - enforce typings across chains 
+    - some chains will be more efficient than others at different operations - mirror data results from specialized chains to be accessed by any chain (think about CosmWasm engine vs EVM)
+
+
 ## Light Client
 
 If the chain does not benefit from IBC, it needs a light client of each of the bridged chains.
