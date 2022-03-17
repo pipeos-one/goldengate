@@ -124,6 +124,15 @@ function transferTo(uint chain_ID, address _to, uint256 _value) private returns 
   return 1;
 }
 ```
+    
+To make sure that a normal `mint` is never executed, we may blacklist that specific function signature from the Proxy Contract.
+    
+## Controls And Selectivity
+    
+- select functions by signature
+- select the calling (sender) address (contract or EOA) by using ACL or proxy of proxy
+- filter the contracts that accept calls by listing them or bloom filter
+    
 
 ## Diagram
   
