@@ -167,3 +167,40 @@ ChainA C1->ChainA Bridge: done!
 ChainA Bridge->User: finalized!
   
 ```
+    
+## By Replay with Interchain Accounts
+    
+![By Replay](images/byReplayICA.svg)
+    
+```
+    Title: EVM Golden Gate Bridging with Interchain Accounts
+participant User
+participant ChainA Bridge
+participant ChainA AtoB Acct
+participant ChainA BtoA Acct
+
+
+participant ChainB Bridge
+participant ChainB AtoB Acct
+participant ChainB BtoA Acct
+
+participant ChainA C1
+participant ChainB C1
+
+User->ChainA Bridge: forePlay()
+ChainA Bridge-> ChainA AtoB Acct: send tx data 
+ChainA Bridge->User: ready to play!
+ChainA AtoB Acct-->ChainB AtoB Acct: send tx data
+ChainB AtoB Acct->ChainB Bridge: play()
+ChainB Bridge->ChainB C1: perform()
+ChainB C1->ChainB Bridge: done!
+ChainB Bridge->ChainB BtoA Acct: proof(perform)
+ChainB BtoA Acct-->ChainA BtoA Acct: played! + (proof data)
+User->ChainA Bridge: finalize()
+ChainA Bridge->ChainA BtoA Acct: check_perform()
+ChainA BtoA Acct->ChainA Bridge: was performed on ChainB!
+ChainA Bridge->ChainA C1: perform()
+ChainA C1->ChainA Bridge: done!
+ChainA Bridge->User: finalized!
+    
+```
