@@ -136,8 +136,10 @@ To make sure that a normal `mint` is never executed, we may blacklist that speci
 
 ## Diagram
   
-![By Replay](images/byReplay.svg)
-```
+
+```mermaid
+
+sequenceDiagram
 Title: EVM Golden Gate Bridging
 participant User
 participant ChainA Bridge
@@ -148,23 +150,23 @@ participant ChainB Bridge
 participant ChainA C1
 participant ChainB C1
 
-User->ChainA Bridge: forePlay()
-ChainA Bridge-> ChainA IBC: send tx data 
-ChainA Bridge->User: ready to play!
-ChainA IBC-->ChainB IBC: send tx data
-User->ChainB Bridge: play()
-ChainB Bridge->ChainB IBC: check_tx()
-ChainB IBC->ChainB Bridge: checked ok
-ChainB Bridge->ChainB C1: perform()
-ChainB C1->ChainB Bridge: done!
-ChainB Bridge->ChainB IBC: proof(perform)
-ChainB Bridge->User: played!
-ChainB IBC-->ChainA IBC: send proof data
-User->ChainA Bridge: finalize()
-ChainA Bridge->ChainA IBC: check_perform()
-ChainA Bridge->ChainA C1: perform()
-ChainA C1->ChainA Bridge: done!
-ChainA Bridge->User: finalized!
+User->>ChainA Bridge: forePlay()
+ChainA Bridge->> ChainA IBC: send tx data 
+ChainA Bridge->>User: ready to play!
+ChainA IBC-->>ChainB IBC: send tx data
+User->>ChainB Bridge: play()
+ChainB Bridge->>ChainB IBC: check_tx()
+ChainB IBC->>ChainB Bridge: checked ok
+ChainB Bridge->>ChainB C1: perform()
+ChainB C1->>ChainB Bridge: done!
+ChainB Bridge->>ChainB IBC: proof(perform)
+ChainB Bridge->>User: played!
+ChainB IBC-->>ChainA IBC: send proof data
+User->>ChainA Bridge: finalize()
+ChainA Bridge->>ChainA IBC: check_perform()
+ChainA Bridge->>ChainA C1: perform()
+ChainA C1->>ChainA Bridge: done!
+ChainA Bridge->>User: finalized!
   
 ```
     
