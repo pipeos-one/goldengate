@@ -1,6 +1,10 @@
 # Abstract Accounts
 
+References:
 
+- https://eips.ethereum.org/EIPS/eip-4337
+- https://eips.ethereum.org/EIPS/eip-2938
+- https://github.com/ethereum/EIPs/issues/86
 
 
 ```mermaid
@@ -27,8 +31,36 @@ sequenceDiagram
 
 ```
 
-## References
 
-- https://eips.ethereum.org/EIPS/eip-4337
-- https://eips.ethereum.org/EIPS/eip-2938
-- https://github.com/ethereum/EIPs/issues/86
+## Usecase - Cron Transactions
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant EOA
+    participant CronPrecompile
+    participant CronModule
+    participant EpochModule
+    participant AbstractAccountModule
+    participant EvmModule
+
+    EOA->>+CronPrecompile: setCronTx(epochID, bytes msgEthereumTx)
+    Note over EOA,CronPrecompile: cron
+    CronPrecompile->>CronModule: RegisterCron
+    CronModule->>CronModule: store cron
+    CronModule->>CronPrecompile: cron identifier
+    CronPrecompile->>EOA: receipt
+    EpochModule--)CronModule: epoch event
+    CronModule->>CronModule: run epoch crons
+    loop run epoch crons
+        Note over AbstractAccountModule: Cosmos or Ethereum tx
+        CronModule->>AbstractAccountModule: ForwardEthereumTx(MsgEthereumTx)
+    end
+
+    AbstractAccountModule->>+EvmModule: apply EthereumTx(MsgEthereumTx)
+    Note over EvmModule: TargetContract.increment()
+    EvmModule->>AbstractAccountModule: EthereumTxReceipt
+    AbstractAccountModule->>EpochModule: EthereumTxReceipt
+    EpochModule->>CronModule: emit Cosmos event
+
+```
