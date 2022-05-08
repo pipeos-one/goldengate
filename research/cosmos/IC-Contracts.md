@@ -15,6 +15,6 @@ The Inter-Chain Smart Contracts are of 2 types: relayable (that hold the state i
 
 1. 1 and 2 from the Replayable requirements
 2. all state needs to store also the chain localization (by chain ID) for that particular state
-3. 3 from Replayable, but state is stored also in the case ChainID input == this.ChainID()
+3. 3 from Replayable, but state is stored also in the case ChainID input != this.ChainID()
 4. same as 4 from the above
 
