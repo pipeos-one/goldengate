@@ -19,8 +19,10 @@ decode:
 
 ### Special Functions
 
-- The Nothing function (recommended to have fID = 0)
+- The Do-Nothing function (recommended to have fID = 0)
 - The Identity function (fID = 1)
 - increment (fID = 2)
 - hash (fID = 3)
 - sum
+- aggregation of mutations: hash and count of inserts, deletes, updates (and provider of the verifier function)
+- 
