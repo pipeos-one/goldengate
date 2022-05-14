@@ -32,7 +32,9 @@ sequenceDiagram
 ```
 
 
-## Usecase - Cron Transactions
+## Usecases
+
+### Cron Transactions
 
 ```mermaid
 sequenceDiagram
@@ -62,5 +64,36 @@ sequenceDiagram
     EvmModule->>AbstractAccountModule: EthereumTxReceipt
     AbstractAccountModule->>EpochModule: EthereumTxReceipt
     EpochModule->>CronModule: emit Cosmos event
+
+```
+
+### Eventual Transactions
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant EOA
+    participant EvmModule
+    participant EventfulContract
+    participant AbstractAccountModule
+
+    EOA->>+EvmModule: EventfulContract.Function
+    EvmModule->>+EvmModule: execute tx
+    EvmModule->>+EventfulContract: call Function
+    Note over EventfulContract: emit SendTx(to, value, gasLimit, calldata)
+    EventfulContract->>+EvmModule: result, logs
+    EvmModule->>+AbstractAccountModule: PostTxProcessing hook (receipt)
+    AbstractAccountModule->>+AbstractAccountModule: ForwardEthereumTx()
+    AbstractAccountModule->>+node: BroadcastTxAsync()
+    node->>+AbstractAccountModule: response, error
+    Note over node: Tx is checked for validity
+    node->>+node: CheckTx
+    Note over node: Tx is included in a future block
+    node->>+node: DeliverTx
+    Note over node: Execute tx
+    node->>+EvmModule: TargetContract.call<br>(value, gasLimit, calldata)
+    EvmModule->>+TargetContract: call (value, gasLimit, calldata)
+    TargetContract->>+EvmModule: result
+    EvmModule->>+node: receipt
 
 ```
