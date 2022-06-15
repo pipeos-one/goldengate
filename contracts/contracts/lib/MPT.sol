@@ -168,7 +168,7 @@ library MPT {
         pure internal returns(bytes memory)
     {
         uint256 slots = length / 32;
-        uint256 rest = (length % 32) * 8;
+        uint256 rest = 256 - (length % 32) * 8;
         uint256 pos = 32;
         uint256 si = 0;
         uint256 source;
