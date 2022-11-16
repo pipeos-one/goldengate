@@ -2,6 +2,11 @@
 
 Other efforts: https://github.com/loredanacirstea/CV/tree/master/evmos
 
+## The Decentralized Database [dDB] - on the Ethereum Virtual Machine [EVM]
+
+- https://youtu.be/KB-hG-rQ-yA
+
+Three ways in which you can implement a database on the Ethereum Virtual Machine, the EVM. One is very very cheap.
 
 ## Ethereum Precompile Proposals - Introspection EIP
 
